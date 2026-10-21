@@ -49,7 +49,7 @@
         <input type="text" id="buscar" oninput="renderRecetas()" placeholder="Buscar receta..." class="p-2.5 text-base border rounded-lg w-1/2">
       </div>
       <div id="lista-recetas" class="space-y-4">
-        <p class="text-center text-gray-500 py-4"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Cargando recetas desde Supabase...</p>
+        <p class="text-center text-gray-500 py-4"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Cargando recetas desde la Base de Datos...</p>
       </div>
     </section>
 
@@ -218,7 +218,7 @@
 
       if (error) {
         console.error('Error al cargar recetas:', error);
-        alert('Hubo un error al conectar con Supabase.');
+        alert('Hubo un error al conectar con la Base de Datos.');
         return;
       }
 
@@ -668,7 +668,7 @@
             return result.map(val => val.replace(/^"|"$/g, '').replace(/""/g, '"'));
           }
 
-          if (confirm('¿Deseas subir e insertar este respaldo CSV en Supabase?')) {
+          if (confirm('¿Deseas subir e insertar este respaldo en la Base de Datos?')) {
             for (let i = 1; i < lines.length; i++) {
               const line = lines[i].trim();
               if (!line) continue;
@@ -686,7 +686,7 @@
                 await supabaseClient.from('recipes').upsert([recetaObj]);
               }
             }
-            alert('¡Respaldo CSV sincronizado con Supabase exitosamente!');
+            alert('¡Respaldo CSV sincronizado con la Base de Datos exitosamente!');
             cargarRecetas();
             cambiarTab('sec-recetas');
           }
