@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Recetario</title>
+
+  <!-- PWA & Theme Settings -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#059669">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Recetario">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- SDK de Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 pb-24">
+
+  <!-- Encabezado -->
+  <header class="bg-emerald-600 text-white p-4 shadow-md sticky top-0 z-10 max-w-xl mx-auto flex items-center justify-between">
+    <!-- Izquierda: Botón de Actualizar -->
+    <button onclick="cargarRecetas()" class="text-white hover:text-emerald-200 p-2 text-xl" title="Actualizar recetas">
+      <i class="fa-solid fa-rotate"></i>
+    </button>
+
+    <!-- Centro: Título Alineado en Dos Líneas -->
+    <h1 class="text-lg font-bold text-center leading-tight">
+      <span class="block text-x uppercase tracking-wider font-normal">Mi Recetario</span>
+    </h1>
+
+    <!-- Derecha: Widget de Reloj en Vivo -->
+    <div id="reloj-widget" class="text-right text-xs font-medium leading-tight">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </header>
+
+  <!-- Contenedor Principal -->
+  <main class="max-w-xl mx-auto p-4">
+
+    <!-- SECCIÓN: VER RECETAS -->
+    <section id="sec-recetas" class="tab-content">
+      <div class="flex justify-between items-center mb-4 gap-2">
+        <h2 class="text-xl font-bold">Mis Recetas</h2>
+        <input type="text" id="buscar" oninput="renderRecetas()" placeholder="Buscar receta..." class="p-2.5 text-base border rounded-lg w-1/2">
+      </div>
+      <div id="lista-recetas" class="space-y-4">
+        <p class="text-center text-gray-500 py-4"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Cargando recetas desde Supabase...</p>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: AGREGAR / EDITAR RECETA -->
+    <section id="sec-agregar" class="tab-content hidden">
+      <h2 id="titulo-form" class="text-xl font-bold mb-4">Nueva Receta</h2>
+      <form id="form-receta" onsubmit="guardarReceta(event)" class="bg-white p-5 rounded-xl shadow space-y-4">
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">Nombre de la Receta</label>
+          <input type="text" id="rec-nombre" required class="w-full p-2.5 text-base border rounded-lg" placeholder="Ej. Pastel de Chocolate">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1">Molde</label>
+            <input type="text" id="rec-molde" placeholder="Ej. Redondo 24cm" class="w-full p-2.5 text-base border rounded-lg">
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1">Tiempo (min)</label>
+            <input type="number" id="rec-tiempo" placeholder="30" class="w-full p-2.5 text-base border rounded-lg">
+          </div>
+        </div>
+
+        <!-- Lista Dinámica de Ingredientes Manuales -->
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">Ingredientes</label>
+          <div id="contenedor-ingredientes-receta" class="space-y-2 mb-2"></div>
+          <button type="button" onclick="agregarFilaIngrediente()" class="text-sm bg-emerald-100 text-emerald-800 px-3 py-2 rounded-lg font-semibold">
+            + Agregar ingrediente
+          </button>
+        </div>
+
+        <div>
+          <label class="block text-sm font-bold text-gray-700 mb-1">Instrucciones / Pasos</label>
+          <textarea id="rec-pasos" rows="4" class="w-full p-2.5 text-base border rounded-lg" placeholder="1. Mezclar los ingredientes secos..."></textarea>
+        </div>
+
+        <div class="space-y-2">
+          <button type="submit" id="btn-submit-receta" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg text-base shadow">Guardar Receta</button>
+          <button type="button" id="btn-cancelar-edicion" onclick="cancelarEdicion()" class="w-full bg-gray-200 text-gray-700 font-bold py-2 rounded-lg text-sm hidden">Cancelar Edición</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- SECCIÓN: GUARDAR / RESPALDO -->
+    <section id="sec-guardar" class="tab-content hidden">
+      <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-file-excel text-emerald-600"></i> Respaldo de recetas
+      </h2>
+      <div class="bg-white p-6 rounded-xl shadow space-y-4">
+        <p class="text-sm text-gray-600">
+          Exporta o importa tus recetas en formato CSV compatible con Excel para respaldar tu información de manera externa.
+        </p>
+
+        <!-- Botón Exportar CSV -->
+        <button onclick="exportarRespaldoCSV()" class="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-lg text-base shadow flex items-center justify-center gap-2">
+          <i class="fa-solid fa-file-arrow-down text-xl"></i> Exportar Respaldo CSV
+        </button>
+
+        <!-- Botón Importar CSV -->
+        <div>
+          <button onclick="document.getElementById('input-archivo-csv').click()" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-lg text-base shadow flex items-center justify-center gap-2">
+            <i class="fa-solid fa-file-arrow-up text-xl"></i> Cargar y Sincronizar Respaldo CSV
+          </button>
+          <input type="file" id="input-archivo-csv" accept=".csv" onchange="importarRespaldoCSV(event)" class="hidden">
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL PANTALLA COMPLETA -->
+  <div id="modal-pantalla-completa" class="fixed inset-0 bg-[#231202] text-white z-50 hidden flex flex-col p-6 overflow-y-auto">
+    <div class="flex items-center justify-between pb-4 border-b border-amber-800/50">
+      <button onclick="cerrarPantallaCompleta()" class="text-amber-100 hover:text-white text-2xl p-2 bg-amber-950/80 rounded-full w-12 h-12 flex items-center justify-center shadow">
+        <i class="fa-solid fa-chevron-down"></i>
+      </button>
+      <h2 id="fullscreen-titulo" class="text-2xl md:text-3xl font-extrabold text-center text-amber-100 px-4 flex-1"></h2>
+      <div class="w-12"></div>
+    </div>
+
+    <div class="text-center py-4 text-amber-200 text-base md:text-lg font-semibold border-b border-amber-800/40">
+      <p id="fullscreen-info"></p>
+    </div>
+
+    <div class="flex-1 my-6 space-y-10 max-w-xl mx-auto w-full">
+      <div>
+        <h3 class="text-amber-400 font-extrabold text-xl md:text-2xl uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-amber-900/60 pb-2">
+          <i class="fa-solid fa-list-check text-amber-400"></i> Ingredientes <span id="fullscreen-factor" class="text-sm bg-amber-900/80 text-amber-200 px-3 py-1 rounded-full ml-auto font-bold"></span>
+        </h3>
+        <ul id="fullscreen-ingredientes" class="space-y-3 text-white text-xl md:text-2xl leading-relaxed font-bold pl-1"></ul>
+      </div>
+
+      <div>
+        <h3 class="text-amber-400 font-extrabold text-xl md:text-2xl uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-amber-900/60 pb-2">
+          <i class="fa-solid fa-fire-burner text-amber-400"></i> Preparación
+        </h3>
+        <div id="fullscreen-pasos" class="text-amber-50 text-lg md:text-xl leading-loose font-medium pl-1 whitespace-pre-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navegación Inferior Móvil -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2 text-center text-xs text-gray-600 z-10 max-w-xl mx-auto">
+    <button onclick="cambiarTab('sec-recetas')" class="p-2 flex-1 text-emerald-600 font-bold" id="btn-sec-recetas">
+      <i class="fa-solid fa-book-open text-xl block mb-1"></i> Recetas
+    </button>
+    <button onclick="cambiarTab('sec-agregar')" class="p-2 flex-1" id="btn-sec-agregar">
+      <i class="fa-solid fa-circle-plus text-xl block mb-1"></i> Nueva
+    </button>
+    <button onclick="cambiarTab('sec-guardar')" class="p-2 flex-1" id="btn-sec-guardar">
+      <i class="fa-solid fa-floppy-disk text-xl block mb-1"></i> Respaldo
+    </button>
+  </nav>
+
+  <script>
+    // --- REGISTRO DEL SERVICE WORKER (PWA) ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('Service Worker registrado con éxito:', reg.scope))
+          .catch(err => console.error('Error al registrar Service Worker:', err));
+      });
+    }
+
+    // Configuración de Supabase
+    const SUPABASE_URL = 'https://mifbcyxtafeacwkzqzsq.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_O6EAbkSba1NQPq08k_7bHg_PZ_x4ZU5';
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let recetas = [];
+    let idEditando = null;
+    let escalasRecetas = {}; 
+    let temporizadores = {}; 
+
+    // --- RELOJ EN VIVO ---
+    function actualizarReloj() {
+      const ahora = new Date();
+      const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      const dia = String(ahora.getDate()).padStart(2, '0');
+      const mes = meses[ahora.getMonth()];
+      const anio = ahora.getFullYear();
+      const fechaFormateada = `${dia}-${mes}-${anio}`;
+
+      let horas = ahora.getHours();
+      const minutos = String(ahora.getMinutes()).padStart(2, '0');
+      const segundos = String(ahora.getSeconds()).padStart(2, '0');
+      const ampm = horas >= 12 ? 'p.m.' : 'a.m.';
+      horas = horas % 12;
+      horas = horas ? horas : 12; // La hora '0' se convierte en '12'
+      const horaFormateada = `${String(horas).padStart(2, '0')}:${minutos}:${segundos} ${ampm}`;
+
+      const widget = document.getElementById('reloj-widget');
+      if (widget) {
+        widget.innerHTML = `<div>${fechaFormateada}</div><div class="font-bold">${horaFormateada}</div>`;
+      }
+    }
+    setInterval(actualizarReloj, 1000);
+    actualizarReloj();
+
+    // --- CARGAR RECETAS DESDE SUPABASE ---
+    async function cargarRecetas() {
+      const { data, error } = await supabaseClient
+        .from('recipes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error al cargar recetas:', error);
+        alert('Hubo un error al conectar con Supabase.');
+        return;
+      }
+
+      recetas = data || [];
+      renderRecetas();
+    }
+
+    function cambiarTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(tabId).classList.remove('hidden');
+      
+      document.querySelectorAll('nav button').forEach(btn => {
+        btn.classList.remove('text-emerald-600', 'font-bold');
+      });
+      document.getElementById('btn-' + tabId).classList.add('text-emerald-600', 'font-bold');
+
+      if(tabId === 'sec-recetas') cargarRecetas();
+      if(tabId === 'sec-agregar' && !idEditando && document.getElementById('contenedor-ingredientes-receta').children.length === 0) {
+        agregarFilaIngrediente();
+      }
+    }
+
+    // --- AGREGAR FILA DE INGREDIENTE MANUAL ---
+    function agregarFilaIngrediente(nombre = '', cantidad = '', unidad = 'grs') {
+      const cont = document.getElementById('contenedor-ingredientes-receta');
+      const div = document.createElement('div');
+      div.className = 'flex gap-2 items-center';
+      
+      div.innerHTML = `
+        <input type="text" placeholder="Ingrediente" value="${nombre}" class="ing-nombre w-1/2 p-2 border rounded-lg text-sm" required>
+        <input type="number" step="0.01" placeholder="Cant." value="${cantidad}" class="ing-cant w-1/4 p-2 border rounded-lg text-sm" required>
+        <select class="ing-unidad w-1/4 p-2 border rounded-lg text-sm">
+          <option value="grs" ${unidad === 'grs' ? 'selected' : ''}>grs</option>
+          <option value="cda(s)" ${unidad === 'cda(s)' ? 'selected' : ''}>cda(s)</option>
+          <option value="cdta(s)" ${unidad === 'cdta(s)' ? 'selected' : ''}>cdta(s)</option>
+          <option value="ml" ${unidad === 'ml' ? 'selected' : ''}>ml</option>
+          <option value="taza(s)" ${unidad === 'taza(s)' ? 'selected' : ''}>taza(s)</option>
+          <option value="pza(s)" ${unidad === 'pza(s)' ? 'selected' : ''}>pza(s)</option>
+        </select>
+        <button type="button" onclick="this.parentElement.remove()" class="text-red-500 text-base px-2"><i class="fa-solid fa-trash"></i></button>
+      `;
+      cont.appendChild(div);
+    }
+
+    // --- GUARDAR O ACTUALIZAR RECETA EN SUPABASE ---
+    async function guardarReceta(e) {
+      e.preventDefault();
+      const filas = document.querySelectorAll('#contenedor-ingredientes-receta > div');
+      let listaIng = [];
+
+      filas.forEach(fila => {
+        const nombre = fila.querySelector('.ing-nombre').value.trim();
+        const cantidad = parseFloat(fila.querySelector('.ing-cant').value);
+        const unidad = fila.querySelector('.ing-unidad').value;
+
+        if(nombre && !isNaN(cantidad)) {
+          listaIng.push({ nombre, cantidad, unidad });
+        }
+      });
+
+      const esFavoritaPrevio = idEditando ? (recetas.find(r => r.id === idEditando)?.favorita || false) : false;
+
+      const recetaDatos = {
+        id: idEditando || Date.now(),
+        nombre: document.getElementById('rec-nombre').value,
+        molde: document.getElementById('rec-molde').value.trim() || '-',
+        tiempo: document.getElementById('rec-tiempo').value ? parseInt(document.getElementById('rec-tiempo').value) : null,
+        pasos: document.getElementById('rec-pasos').value,
+        ingredientes: listaIng,
+        favorita: esFavoritaPrevio
+      };
+
+      if (idEditando) {
+        const { error } = await supabaseClient
+          .from('recipes')
+          .update(recetaDatos)
+          .eq('id', idEditando);
+
+        if (error) {
+          alert('Error al actualizar la receta: ' + error.message);
+          return;
+        }
+      } else {
+        const { error } = await supabaseClient
+          .from('recipes')
+          .insert([recetaDatos]);
+
+        if (error) {
+          alert('Error al guardar la receta: ' + error.message);
+          return;
+        }
+      }
+
+      cancelarEdicion();
+      cargarRecetas();
+    }
+
+    // --- EDITAR Y CANCELAR ---
+    async function editarReceta(id) {
+      const receta = recetas.find(r => r.id === id);
+      if (!receta) return;
+
+      idEditando = id;
+      document.getElementById('titulo-form').innerText = 'Editar Receta';
+      document.getElementById('rec-nombre').value = receta.nombre;
+      document.getElementById('rec-molde').value = (receta.molde && receta.molde !== '-') ? receta.molde : '';
+      document.getElementById('rec-tiempo').value = receta.tiempo || '';
+      document.getElementById('rec-pasos').value = receta.pasos || '';
+
+      const cont = document.getElementById('contenedor-ingredientes-receta');
+      cont.innerHTML = '';
+      if (receta.ingredientes && receta.ingredientes.length > 0) {
+        receta.ingredientes.forEach(ing => agregarFilaIngrediente(ing.nombre, ing.cantidad, ing.unidad));
+      } else {
+        agregarFilaIngrediente();
+      }
+
+      document.getElementById('btn-submit-receta').innerText = 'Actualizar Receta';
+      document.getElementById('btn-cancelar-edicion').classList.remove('hidden');
+      cambiarTab('sec-agregar');
+    }
+
+    function cancelarEdicion() {
+      idEditando = null;
+      document.getElementById('titulo-form').innerText = 'Nueva Receta';
+      document.getElementById('form-receta').reset();
+      document.getElementById('contenedor-ingredientes-receta').innerHTML = '';
+      document.getElementById('btn-submit-receta').innerText = 'Guardar Receta';
+      document.getElementById('btn-cancelar-edicion').classList.add('hidden');
+      cambiarTab('sec-recetas');
+    }
+
+    // --- FAVORITO ---
+    async function toggleFavorito(id) {
+      const receta = recetas.find(r => r.id === id);
+      if (receta) {
+        const nuevoEstado = !receta.favorita;
+        const { error } = await supabaseClient
+          .from('recipes')
+          .update({ favorita: nuevoEstado })
+          .eq('id', id);
+
+        if (!error) {
+          receta.favorita = nuevoEstado;
+          renderRecetas();
+        } else {
+          alert('Error al actualizar favorito.');
+        }
+      }
+    }
+
+    // --- PANTALLA COMPLETA ---
+    function abrirPantallaCompleta(id) {
+      const r = recetas.find(rec => rec.id === id);
+      if (!r) return;
+
+      const factor = escalasRecetas[id] !== undefined ? escalasRecetas[id] : 1;
+      const moldeTexto = (r.molde && r.molde.trim() !== '' && r.molde !== '-') ? r.molde : 'No especificado';
+      const tiempoTexto = r.tiempo ? `${r.tiempo} min` : 'No especificado';
+
+      document.getElementById('fullscreen-titulo').innerText = r.nombre;
+      document.getElementById('fullscreen-info').innerText = `Molde: ${moldeTexto}  •  Tiempo: ${tiempoTexto}`;
+      document.getElementById('fullscreen-factor').innerText = `Porción: ${factor}x`;
+
+      const listaIng = document.getElementById('fullscreen-ingredientes');
+      listaIng.innerHTML = (r.ingredientes || []).map(i => {
+        const cantCalculada = (i.cantidad * factor).toFixed(2).replace(/\.00$/, '');
+        return `<li class="flex justify-between items-baseline border-b border-amber-900/30 pb-1">
+          <span>• ${i.nombre}</span>
+          <span class="text-amber-300 font-extrabold ml-2">${cantCalculada} ${i.unidad}</span>
+        </li>`;
+      }).join('');
+
+      document.getElementById('fullscreen-pasos').innerText = r.pasos || 'Sin instrucciones cargadas.';
+
+      document.getElementById('modal-pantalla-completa').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarPantallaCompleta() {
+      document.getElementById('modal-pantalla-completa').classList.add('hidden');
+      document.body.style.overflow = 'auto';
+    }
+
+    // --- MULTIPLICADOR / ESCALADOR DINÁMICO ---
+    function cambiarEscala(id, factor) {
+      escalasRecetas[id] = factor;
+      const receta = recetas.find(r => r.id === id);
+      if (!receta) return;
+
+      const tagFactor = document.getElementById(`factor-label-${id}`);
+      if (tagFactor) tagFactor.innerText = `${factor}x`;
+
+      const btns = document.querySelectorAll(`.btn-escala-${id}`);
+      btns.forEach(btn => {
+        const btnFactor = parseFloat(btn.getAttribute('data-factor'));
+        if (Math.abs(btnFactor - factor) < 0.001) {
+          btn.className = `btn-escala-${id} px-2.5 py-1 rounded font-bold bg-emerald-600 text-white`;
+        } else {
+          btn.className = `btn-escala-${id} px-2.5 py-1 rounded font-bold bg-white text-gray-700 border`;
+        }
+      });
+
+      const listaUl = document.getElementById(`lista-ingredientes-${id}`);
+      if (listaUl) {
+        listaUl.innerHTML = (receta.ingredientes || []).map(i => {
+          const cantCalculada = (i.cantidad * factor).toFixed(2).replace(/\.00$/, '');
+          return `<li>${i.nombre} ${cantCalculada}${i.unidad}</li>`;
+        }).join('');
+      }
+    }
+
+    // --- TEMPORIZADOR DE COCINA ---
+    function iniciarTemporizador(id, minutosIniciales) {
+      const display = document.getElementById(`timer-display-${id}`);
+      let segundos = (temporizadores[id]?.restante !== undefined) ? temporizadores[id].restante : (minutosIniciales * 60);
+
+      if (temporizadores[id]?.interval) clearInterval(temporizadores[id].interval);
+
+      temporizadores[id] = {
+        restante: segundos,
+        interval: setInterval(() => {
+          if (segundos <= 0) {
+            clearInterval(temporizadores[id].interval);
+            display.innerText = "¡Listo!";
+            alert("⏰ ¡El tiempo de la receta ha terminado!");
+            return;
+          }
+          segundos--;
+          temporizadores[id].restante = segundos;
+          const min = String(Math.floor(segundos / 60)).padStart(2, '0');
+          const sec = String(segundos % 60).padStart(2, '0');
+          display.innerText = `${min}:${sec}`;
+        }, 1000)
+      };
+    }
+
+    function pausarTemporizador(id) {
+      if (temporizadores[id]?.interval) {
+        clearInterval(temporizadores[id].interval);
+        temporizadores[id].interval = null;
+      }
+    }
+
+    function resetTemporizador(id, minutosIniciales) {
+      pausarTemporizador(id);
+      temporizadores[id] = { restante: minutosIniciales * 60 };
+      const display = document.getElementById(`timer-display-${id}`);
+      if (display) {
+        const min = String(minutosIniciales).padStart(2, '0');
+        display.innerText = `${min}:00`;
+      }
+    }
+
+    // --- COPIAR / COMPARTIR RECETA ---
+    function compartirReceta(id) {
+      const r = recetas.find(rec => rec.id === id);
+      if (!r) return;
+
+      const factor = escalasRecetas[id] !== undefined ? escalasRecetas[id] : 1;
+      let texto = `🍳 *${r.nombre}*\n`;
+      if (r.molde && r.molde !== '-') texto += `🥘 Molde: ${r.molde}\n`;
+      if (r.tiempo) texto += `⏱️ Tiempo: ${r.tiempo} min\n`;
+      texto += `\n*Ingredientes (${factor}x):*\n`;
+
+      (r.ingredientes || []).forEach(i => {
+        const cantEscalada = (i.cantidad * factor).toFixed(2).replace(/\.00$/, '');
+        texto += `- ${i.nombre} ${cantEscalada} ${i.unidad}\n`;
+      });
+
+      texto += `\n*Pasos:*\n${r.pasos || 'Sin pasos.'}`;
+
+      if (navigator.share) {
+        navigator.share({ title: r.nombre, text: texto }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(texto);
+        alert('¡Receta copiada al portapapeles!');
+      }
+    }
+
+    // --- RENDERIZAR RECETAS ---
+    function renderRecetas() {
+      const filtro = document.getElementById('buscar').value.toLowerCase();
+      const contenedor = document.getElementById('lista-recetas');
+      let filtradas = recetas.filter(r => r.nombre.toLowerCase().includes(filtro));
+
+      filtradas.sort((a, b) => (b.favorita ? 1 : 0) - (a.favorita ? 1 : 0));
+
+      if (filtradas.length === 0) {
+        contenedor.innerHTML = '<p class="text-center text-base text-gray-400 py-8">No hay recetas guardadas aún.</p>';
+        return;
+      }
+
+      contenedor.innerHTML = filtradas.map(r => {
+        const factor = escalasRecetas[r.id] !== undefined ? escalasRecetas[r.id] : 1;
+        const tiempoMin = parseInt(r.tiempo) || 0;
+        const moldeTexto = (r.molde && r.molde.trim() !== '') ? r.molde : '-';
+
+        return `
+        <div class="bg-white rounded-xl shadow p-4 space-y-3 ${r.favorita ? 'border-2 border-red-300' : ''}">
+          <div class="flex justify-between items-start">
+            <div>
+              <h3 class="font-bold text-gray-800 text-xl">${r.nombre}</h3>
+              <p class="text-sm text-gray-500 mt-0.5">
+                <i class="fa-regular fa-clock mr-1"></i>${r.tiempo || '--'} min | 
+                <i class="fa-solid fa-cookie-bite mr-1"></i>Molde: ${moldeTexto}
+              </p>
+            </div>
+            <div class="flex gap-2 items-center">
+              <button onclick="abrirPantallaCompleta(${r.id})" class="text-gray-400 hover:text-emerald-600 text-base p-1" title="Pantalla Completa">
+                <i class="fa-solid fa-expand"></i>
+              </button>
+              <button onclick="compartirReceta(${r.id})" class="text-gray-400 hover:text-blue-600 text-base p-1" title="Copiar/Compartir">
+                <i class="fa-solid fa-share-nodes"></i>
+              </button>
+              <button onclick="toggleFavorito(${r.id})" class="text-base p-1" title="Favorito">
+                <i class="fa-solid fa-paw ${r.favorita ? 'text-red-500' : 'text-gray-300 hover:text-red-400'}"></i>
+              </button>
+              <button onclick="editarReceta(${r.id})" class="text-emerald-600 hover:text-emerald-800 text-base p-1" title="Editar">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="eliminarReceta(${r.id})" class="text-red-400 hover:text-red-600 text-base p-1" title="Eliminar">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+
+          <details class="text-sm text-gray-700 border-t pt-3 mt-2">
+            <summary class="cursor-pointer font-bold text-emerald-700 text-base">Ver Ingredientes y Pasos</summary>
+            
+            <div class="flex items-center justify-between mt-3 bg-emerald-50 p-2 rounded-lg">
+              <span class="text-xs font-bold text-emerald-800">Escalar Porciones:</span>
+              <div class="flex gap-1 text-xs">
+                ${[0.5, 1, 2, 3].map(f => {
+                  const esActivo = Math.abs(Number(factor) - Number(f)) < 0.001;
+                  return `
+                    <button onclick="cambiarEscala(${r.id}, ${f})" data-factor="${f}" class="btn-escala-${r.id} px-2.5 py-1 rounded font-bold${esActivo ? 'bg-emerald-600 text-white' : 'bg-white text-gray-700 border'}">
+                      ${f === 0.5 ? '½x' : f + 'x'}
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <p class="font-bold text-gray-800 text-sm mt-3">Ingredientes (<span id="factor-label-${r.id}">${factor}x</span>):</p>
+            <ul id="lista-ingredientes-${r.id}" class="list-disc ml-5 my-2 space-y-1 text-sm">
+              ${(r.ingredientes || []).map(i => {
+                const cantCalculada = (i.cantidad * factor).toFixed(2).replace(/\.00$/, '');
+                return `<li>${i.nombre} ${cantCalculada}${i.unidad}</li>`;
+              }).join('')}
+            </ul>
+
+            <p class="font-bold text-gray-800 text-sm mt-3">Pasos de preparación:</p>
+            <p class="whitespace-pre-line bg-gray-50 p-3 rounded-lg border mt-1 text-sm leading-relaxed">${r.pasos || 'Sin instrucciones agregadas.'}</p>
+
+            ${tiempoMin > 0 ? `
+              <div class="mt-4 bg-gray-50 border p-3 rounded-lg flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-stopwatch text-emerald-600 text-lg"></i>
+                  <span id="timer-display-${r.id}" class="font-mono font-bold text-base">${String(tiempoMin).padStart(2, '0')}:00</span>
+                </div>
+                <div class="flex gap-1">
+                  <button onclick="iniciarTemporizador(${r.id},${tiempoMin})" class="bg-emerald-600 text-white text-xs px-2.5 py-1 rounded font-bold">Iniciar</button>
+                  <button onclick="pausarTemporizador(${r.id})" class="bg-amber-500 text-white text-xs px-2.5 py-1 rounded font-bold">Pausa</button>
+                  <button onclick="resetTemporizador(${r.id},${tiempoMin})" class="bg-gray-300 text-gray-700 text-xs px-2.5 py-1 rounded font-bold">Reset</button>
+                </div>
+              </div>
+            ` : ''}
+          </details>
+        </div>
+      `;
+      }).join('');
+    }
+
+    // --- ELIMINAR RECETA DE SUPABASE ---
+    async function eliminarReceta(id) {
+      if(confirm('¿Seguro que deseas eliminar esta receta?')) {
+        const { error } = await supabaseClient
+          .from('recipes')
+          .delete()
+          .eq('id', id);
+
+        if (!error) {
+          cargarRecetas();
+        } else {
+          alert('Error al eliminar la receta.');
+        }
+      }
+    }
+
+    // --- RESPALDOS CSV ---
+    function exportarRespaldoCSV() {
+      if (recetas.length === 0) return alert('No hay recetas para exportar.');
+      
+      let csvContent = "id,nombre,molde,tiempo,pasos,ingredientes,favorita\r\n";
+      recetas.forEach(r => {
+        const id = r.id;
+        const nombre = `"${(r.nombre || '').replace(/"/g, '""')}"`;
+        const molde = `"${(r.molde || '').replace(/"/g, '""')}"`;
+        const tiempo = r.tiempo || '';
+        const pasos = `"${(r.pasos || '').replace(/"/g, '""').replace(/\n/g, '\\n')}"`;
+        const ingredientes = `"${JSON.stringify(r.ingredientes || []).replace(/"/g, '""')}"`;
+        const favorita = r.favorita ? 'TRUE' : 'FALSE';
+
+        csvContent += `${id},${nombre},${molde},${tiempo},${pasos},${ingredientes},${favorita}\r\n`;
+      });
+
+      const ahora = new Date();
+      const dia = String(ahora.getDate()).padStart(2, '0');
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const mes = meses[ahora.getMonth()];
+      const anio = String(ahora.getFullYear()).slice(-2);
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `respaldo_recetas_${dia}${mes}${anio}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function importarRespaldoCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          const text = e.target.result;
+          const lines = text.split(/\r\n|\n/);
+          if (lines.length < 2) return alert('El archivo CSV está vacío o no tiene el formato correcto.');
+
+          // Parseo sencillo de CSV respetando comillas
+          function parseCSVLine(line) {
+            const result = [];
+            let startValue = 0;
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+              if (line[i] === '"') {
+                inQuotes = !inQuotes;
+              } else if (line[i] === ',' && !inQuotes) {
+                result.push(line.slice(startValue, i));
+                startValue = i + 1;
+              }
+            }
+            result.push(line.slice(startValue));
+            return result.map(val => val.replace(/^"|"$/g, '').replace(/""/g, '"'));
+          }
+
+          if (confirm('¿Deseas subir e insertar este respaldo CSV en Supabase?')) {
+            for (let i = 1; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (!line) continue;
+              const cols = parseCSVLine(line);
+              if (cols.length >= 7) {
+                const recetaObj = {
+                  id: Number(cols[0]) || Date.now(),
+                  nombre: cols[1],
+                  molde: cols[2],
+                  tiempo: cols[3] ? Number(cols[3]) : null,
+                  pasos: cols[4].replace(/\\n/g, '\n'),
+                  ingredientes: JSON.parse(cols[5] || '[]'),
+                  favorita: cols[6].toUpperCase() === 'TRUE'
+                };
+                await supabaseClient.from('recipes').upsert([recetaObj]);
+              }
+            }
+            alert('¡Respaldo CSV sincronizado con Supabase exitosamente!');
+            cargarRecetas();
+            cambiarTab('sec-recetas');
+          }
+        } catch (error) { 
+          console.error(error);
+          alert('Error al procesar el archivo CSV.'); 
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Carga Inicial al abrir la web
+    cargarRecetas();
+  </script>
+</body>
+</html>
