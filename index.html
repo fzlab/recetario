@@ -24,14 +24,17 @@
   <!-- Encabezado -->
   <header class="bg-emerald-600 text-white p-4 shadow-md sticky top-0 z-10 max-w-xl mx-auto flex items-center justify-between">
     <!-- Izquierda: Botón de Actualizar -->
-    <button onclick="cargarRecetas()" class="text-white hover:text-emerald-200 p-2 text-xl" title="Actualizar recetas">
-      <i class="fa-solid fa-rotate"></i>
+    <button onclick="cargarRecetasManual()" class="text-white hover:text-emerald-200 p-2 text-xl" title="Actualizar recetas">
+      <i id="iconActualizar" class="fa-solid fa-rotate"></i>
     </button>
 
-    <!-- Centro: Título Alineado en Dos Líneas -->
-    <h1 class="text-lg font-bold text-center leading-tight">
-      <span class="block text-x uppercase tracking-wider font-normal">Mi Recetario</span>
-    </h1>
+    <!-- Centro: Título y Estatus de Red -->
+    <div class="text-center">
+      <h1 class="text-lg font-bold leading-tight">
+        <span class="block text-x uppercase tracking-wider font-normal">Mi Recetario</span>
+      </h1>
+      <span id="conexionStatus" class="text-[10px] text-emerald-200 font-medium">Verificando red...</span>
+    </div>
 
     <!-- Derecha: Widget de Reloj en Vivo -->
     <div id="reloj-widget" class="text-right text-xs font-medium leading-tight">
@@ -49,7 +52,7 @@
         <input type="text" id="buscar" oninput="renderRecetas()" placeholder="Buscar receta..." class="p-2.5 text-base border rounded-lg w-1/2">
       </div>
       <div id="lista-recetas" class="space-y-4">
-        <p class="text-center text-gray-500 py-4"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Cargando recetas desde la Base de Datos...</p>
+        <p class="text-center text-gray-500 py-4"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Cargando recetas...</p>
       </div>
     </section>
 
@@ -184,6 +187,87 @@
     let escalasRecetas = {}; 
     let temporizadores = {}; 
 
+    // --- GESTIÓN DE COLA OFFLINE Y LOCALSTORAGE ---
+    function obtenerRecetasLocales() {
+      return JSON.parse(localStorage.getItem('recetario_local_cache') || '[]');
+    }
+
+    function guardarRecetasLocales(lista) {
+      localStorage.setItem('recetario_local_cache', JSON.stringify(lista));
+    }
+
+    function obtenerColaOffline() {
+      return JSON.parse(localStorage.getItem('cola_recetario_offline') || '[]');
+    }
+
+    function guardarColaOffline(cola) {
+      localStorage.setItem('cola_recetario_offline', JSON.stringify(cola));
+      actualizarEstadoConexionUI();
+    }
+
+    function agregarAColaOffline(accion, recetaData) {
+      const cola = obtenerColaOffline();
+      cola.push({ idTemp: Date.now(), accion, recetaData });
+      guardarColaOffline(cola);
+    }
+
+    function actualizarEstadoConexionUI() {
+      const statusEl = document.getElementById('conexionStatus');
+      if (!statusEl) return;
+      const cola = obtenerColaOffline();
+
+      if (!navigator.onLine) {
+        statusEl.className = "text-[10px] text-amber-300 font-bold";
+        statusEl.innerHTML = `<i class="fa-solid fa-wifi-slash"></i> Offline (${cola.length} pendientes)`;
+      } else if (cola.length > 0) {
+        statusEl.className = "text-[10px] text-amber-200 font-bold animate-pulse";
+        statusEl.innerHTML = `<i class="fa-solid fa-arrows-rotate fa-spin"></i> Sincronizando (${cola.length})...`;
+      } else {
+        statusEl.className = "text-[10px] text-emerald-200 font-medium";
+        statusEl.innerHTML = `<i class="fa-solid fa-circle-check"></i> En Línea`;
+      }
+    }
+
+    async function procesarSincronizacionOffline() {
+      const cola = obtenerColaOffline();
+      if (cola.length === 0 || !navigator.onLine) return;
+
+      actualizarEstadoConexionUI();
+      const colaFallida = [];
+
+      for (const item of cola) {
+        let error = null;
+        if (item.accion === 'CREAR') {
+          const { id, ...dataToInsert } = item.recetaData;
+          const { error: err } = await supabaseClient.from('recipes').insert([dataToInsert]);
+          error = err;
+        } else if (item.accion === 'EDITAR') {
+          const { error: err } = await supabaseClient.from('recipes').update(item.recetaData).eq('id', item.recetaData.id);
+          error = err;
+        } else if (item.accion === 'ELIMINAR') {
+          const { error: err } = await supabaseClient.from('recipes').delete().eq('id', item.recetaData.id);
+          error = err;
+        }
+
+        if (error) {
+          colaFallida.push(item);
+        }
+      }
+
+      guardarColaOffline(colaFallida);
+      if (colaFallida.length === 0) {
+        await cargarRecetas();
+      }
+    }
+
+    window.addEventListener('online', () => {
+      procesarSincronizacionOffline();
+    });
+
+    window.addEventListener('offline', () => {
+      actualizarEstadoConexionUI();
+    });
+
     // --- RELOJ EN VIVO ---
     function actualizarReloj() {
       const ahora = new Date();
@@ -198,7 +282,7 @@
       const segundos = String(ahora.getSeconds()).padStart(2, '0');
       const ampm = horas >= 12 ? 'p.m.' : 'a.m.';
       horas = horas % 12;
-      horas = horas ? horas : 12; // La hora '0' se convierte en '12'
+      horas = horas ? horas : 12;
       const horaFormateada = `${String(horas).padStart(2, '0')}:${minutos}:${segundos} ${ampm}`;
 
       const widget = document.getElementById('reloj-widget');
@@ -209,8 +293,18 @@
     setInterval(actualizarReloj, 1000);
     actualizarReloj();
 
-    // --- CARGAR RECETAS DESDE SUPABASE ---
+    // --- CARGAR RECETAS (ONLINE / OFFLINE) ---
     async function cargarRecetas() {
+      actualizarEstadoConexionUI();
+
+      if (!navigator.onLine) {
+        recetas = obtenerRecetasLocales();
+        renderRecetas();
+        return;
+      }
+
+      await procesarSincronizacionOffline();
+
       const { data, error } = await supabaseClient
         .from('recipes')
         .select('*')
@@ -218,12 +312,21 @@
 
       if (error) {
         console.error('Error al cargar recetas:', error);
-        alert('Hubo un error al conectar con la Base de Datos.');
-        return;
+        recetas = obtenerRecetasLocales(); // Respaldo local si falla la red
+      } else {
+        recetas = data || [];
+        guardarRecetasLocales(recetas);
       }
-
-      recetas = data || [];
       renderRecetas();
+    }
+
+    async function cargarRecetasManual() {
+      const icono = document.getElementById('iconActualizar');
+      if (icono) icono.classList.add('fa-spin');
+      await cargarRecetas();
+      if (icono) {
+        setTimeout(() => icono.classList.remove('fa-spin'), 500);
+      }
     }
 
     function cambiarTab(tabId) {
@@ -263,7 +366,7 @@
       cont.appendChild(div);
     }
 
-    // --- GUARDAR O ACTUALIZAR RECETA EN SUPABASE ---
+    // --- GUARDAR O ACTUALIZAR RECETA CON SOPORTE OFFLINE ---
     async function guardarReceta(e) {
       e.preventDefault();
       const filas = document.querySelectorAll('#contenedor-ingredientes-receta > div');
@@ -290,6 +393,22 @@
         ingredientes: listaIng,
         favorita: esFavoritaPrevio
       };
+
+      if (!navigator.onLine) {
+        if (idEditando) {
+          agregarAColaOffline('EDITAR', recetaDatos);
+          const idx = recetas.findIndex(r => r.id === idEditando);
+          if (idx !== -1) recetas[idx] = recetaDatos;
+        } else {
+          recetaDataOffline = { ...recetaDatos, id: 'temp_' + Date.now() };
+          agregarAColaOffline('CREAR', recetaDatos);
+          recetas.unshift(recetaDatos);
+        }
+        guardarRecetasLocales(recetas);
+        cancelarEdicion();
+        cargarRecetas();
+        return;
+      }
 
       if (idEditando) {
         const { error } = await supabaseClient
@@ -354,19 +473,25 @@
     // --- FAVORITO ---
     async function toggleFavorito(id) {
       const receta = recetas.find(r => r.id === id);
-      if (receta) {
-        const nuevoEstado = !receta.favorita;
-        const { error } = await supabaseClient
-          .from('recipes')
-          .update({ favorita: nuevoEstado })
-          .eq('id', id);
+      if (!receta) return;
 
-        if (!error) {
-          receta.favorita = nuevoEstado;
-          renderRecetas();
-        } else {
-          alert('Error al actualizar favorito.');
-        }
+      const nuevoEstado = !receta.favorita;
+      receta.favorita = nuevoEstado;
+      guardarRecetasLocales(recetas);
+      renderRecetas();
+
+      if (!navigator.onLine) {
+        agregarAColaOffline('EDITAR', receta);
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from('recipes')
+        .update({ favorita: nuevoEstado })
+        .eq('id', id);
+
+      if (error) {
+        alert('Error al actualizar favorito.');
       }
     }
 
@@ -593,17 +718,24 @@
       }).join('');
     }
 
-    // --- ELIMINAR RECETA DE SUPABASE ---
+    // --- ELIMINAR RECETA CON SOPORTE OFFLINE ---
     async function eliminarReceta(id) {
       if(confirm('¿Seguro que deseas eliminar esta receta?')) {
+        recetas = recetas.filter(r => r.id !== id);
+        guardarRecetasLocales(recetas);
+        renderRecetas();
+
+        if (!navigator.onLine) {
+          agregarAColaOffline('ELIMINAR', { id });
+          return;
+        }
+
         const { error } = await supabaseClient
           .from('recipes')
           .delete()
           .eq('id', id);
 
-        if (!error) {
-          cargarRecetas();
-        } else {
+        if (error) {
           alert('Error al eliminar la receta.');
         }
       }
@@ -651,7 +783,6 @@
           const lines = text.split(/\r\n|\n/);
           if (lines.length < 2) return alert('El archivo CSV está vacío o no tiene el formato correcto.');
 
-          // Parseo sencillo de CSV respetando comillas
           function parseCSVLine(line) {
             const result = [];
             let startValue = 0;
@@ -683,10 +814,14 @@
                   ingredientes: JSON.parse(cols[5] || '[]'),
                   favorita: cols[6].toUpperCase() === 'TRUE'
                 };
-                await supabaseClient.from('recipes').upsert([recetaObj]);
+                if (navigator.onLine) {
+                  await supabaseClient.from('recipes').upsert([recetaObj]);
+                } else {
+                  agregarAColaOffline('CREAR', recetaObj);
+                }
               }
             }
-            alert('¡Respaldo CSV sincronizado con la Base de Datos exitosamente!');
+            alert('¡Respaldo CSV procesado exitosamente!');
             cargarRecetas();
             cambiarTab('sec-recetas');
           }
