@@ -215,9 +215,8 @@
       const statusEl = document.getElementById('conexionStatus');
       if (!statusEl) return;
       const cola = obtenerColaOffline();
-      const onlineReal = navigator.onLine;
 
-      if (!onlineReal) {
+      if (!navigator.onLine) {
         statusEl.className = "text-[10px] text-amber-300 font-bold";
         statusEl.innerHTML = `<i class="fa-solid fa-wifi-slash"></i> Offline (${cola.length} pendientes)`;
       } else if (cola.length > 0) {
@@ -301,7 +300,7 @@
     setInterval(actualizarReloj, 1000);
     actualizarReloj();
 
-    // --- CARGAR RECETAS (ONLINE / OFFLINE) PROTEGIDO PARA PWA ---
+    // --- CARGAR RECETAS (ONLINE / OFFLINE) ---
     async function cargarRecetas() {
       actualizarEstadoConexionUI();
 
@@ -311,30 +310,20 @@
         return;
       }
 
-      try {
-        await procesarSincronizacionOffline();
+      await procesarSincronizacionOffline();
 
-        // Control de tiempo límite (timeout) para evitar que la PWA se quede congelada al iniciar
-        const fetchPromise = supabaseClient
-          .from('recipes')
-          .select('*')
-          .order('created_at', { ascending: false });
+      const { data, error } = await supabaseClient
+        .from('recipes')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout PWA')), 4000)
-        );
-
-        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
-
-        if (error) throw error;
-
+      if (error) {
+        console.error('Error al cargar recetas:', error);
+        recetas = obtenerRecetasLocales();
+      } else {
         recetas = data || [];
         guardarRecetasLocales(recetas);
-      } catch (err) {
-        console.warn('Protección PWA activada, cargando caché local:', err.message);
-        recetas = obtenerRecetasLocales();
       }
-      
       renderRecetas();
     }
 
