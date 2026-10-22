@@ -207,7 +207,7 @@
 
     function agregarAColaOffline(accion, recetaData) {
       const cola = obtenerColaOffline();
-      cola.push({ idTemp: recetaData.id || crypto.randomUUID(), accion, recetaData });
+      cola.push({ idTemp: recetaData.id, accion, recetaData });
       guardarColaOffline(cola);
     }
 
@@ -239,23 +239,14 @@
       for (const item of cola) {
         let error = null;
         if (item.accion === 'CREAR') {
-          const { id, ...dataToInsert } = item.recetaData;
-          const { error: err } = await supabaseClient.from('recipes').insert([dataToInsert]);
+          const { error: err } = await supabaseClient.from('recipes').insert([item.recetaData]);
           error = err;
         } else if (item.accion === 'EDITAR') {
-          if (String(item.recetaData.id).startsWith('temp_')) {
-            const { id, ...dataToInsert } = item.recetaData;
-            const { error: err } = await supabaseClient.from('recipes').insert([dataToInsert]);
-            error = err;
-          } else {
-            const { error: err } = await supabaseClient.from('recipes').update(item.recetaData).eq('id', item.recetaData.id);
-            error = err;
-          }
+          const { error: err } = await supabaseClient.from('recipes').upsert([item.recetaData]);
+          error = err;
         } else if (item.accion === 'ELIMINAR') {
-          if (!String(item.recetaData.id).startsWith('temp_')) {
-            const { error: err } = await supabaseClient.from('recipes').delete().eq('id', item.recetaData.id);
-            error = err;
-          }
+          const { error: err } = await supabaseClient.from('recipes').delete().eq('id', item.recetaData.id);
+          error = err;
         }
 
         if (error) {
@@ -402,8 +393,9 @@
 
       const esFavoritaPrevio = idEditando ? (recetas.find(r => r.id === idEditando)?.favorita || false) : false;
 
+      // Generamos un UUID válido siempre (para online u offline)
       const recetaDatos = {
-        id: idEditando || 'temp_' + crypto.randomUUID(),
+        id: idEditando || crypto.randomUUID(),
         nombre: document.getElementById('rec-nombre').value,
         molde: document.getElementById('rec-molde').value.trim() || '-',
         tiempo: document.getElementById('rec-tiempo').value ? parseInt(document.getElementById('rec-tiempo').value) : null,
@@ -428,7 +420,7 @@
         return;
       }
 
-      if (idEditando && !String(idEditando).startsWith('temp_')) {
+      if (idEditando) {
         const { error } = await supabaseClient
           .from('recipes')
           .update(recetaDatos)
@@ -439,10 +431,10 @@
           return;
         }
       } else {
-        const { id, ...dataToInsert } = recetaDatos;
+        // Al insertar enviamos recetaDatos completo incluyendo su id de tipo UUID
         const { error } = await supabaseClient
           .from('recipes')
-          .insert([dataToInsert]);
+          .insert([recetaDatos]);
 
         if (error) {
           alert('Error al guardar la receta: ' + error.message);
@@ -499,7 +491,7 @@
       guardarRecetasLocales(recetas);
       renderRecetas();
 
-      if (!navigator.onLine || String(id).startsWith('temp_')) {
+      if (!navigator.onLine) {
         agregarAColaOffline('EDITAR', receta);
         return;
       }
@@ -744,7 +736,7 @@
         guardarRecetasLocales(recetas);
         renderRecetas();
 
-        if (!navigator.onLine || String(id).startsWith('temp_')) {
+        if (!navigator.onLine) {
           agregarAColaOffline('ELIMINAR', { id });
           return;
         }
@@ -825,6 +817,7 @@
               const cols = parseCSVLine(line);
               if (cols.length >= 7) {
                 const recetaObj = {
+                  id: cols[0] && cols[0].length > 10 ? cols[0] : crypto.randomUUID(),
                   nombre: cols[1],
                   molde: cols[2],
                   tiempo: cols[3] ? Number(cols[3]) : null,
@@ -835,7 +828,7 @@
                 if (navigator.onLine) {
                   await supabaseClient.from('recipes').insert([recetaObj]);
                 } else {
-                  agregarAColaOffline('CREAR', { ...recetaObj, id: 'temp_' + crypto.randomUUID() });
+                  agregarAColaOffline('CREAR', recetaObj);
                 }
               }
             }
