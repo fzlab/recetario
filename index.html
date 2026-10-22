@@ -207,7 +207,7 @@
 
     function agregarAColaOffline(accion, recetaData) {
       const cola = obtenerColaOffline();
-      cola.push({ idTemp: recetaData.id || Date.now(), accion, recetaData });
+      cola.push({ idTemp: recetaData.id || crypto.randomUUID(), accion, recetaData });
       guardarColaOffline(cola);
     }
 
@@ -215,8 +215,9 @@
       const statusEl = document.getElementById('conexionStatus');
       if (!statusEl) return;
       const cola = obtenerColaOffline();
+      const onlineReal = navigator.onLine;
 
-      if (!navigator.onLine) {
+      if (!onlineReal) {
         statusEl.className = "text-[10px] text-amber-300 font-bold";
         statusEl.innerHTML = `<i class="fa-solid fa-wifi-slash"></i> Offline (${cola.length} pendientes)`;
       } else if (cola.length > 0) {
@@ -300,7 +301,7 @@
     setInterval(actualizarReloj, 1000);
     actualizarReloj();
 
-    // --- CARGAR RECETAS (ONLINE / OFFLINE) ---
+    // --- CARGAR RECETAS (ONLINE / OFFLINE) PROTEGIDO PARA PWA ---
     async function cargarRecetas() {
       actualizarEstadoConexionUI();
 
@@ -310,20 +311,30 @@
         return;
       }
 
-      await procesarSincronizacionOffline();
+      try {
+        await procesarSincronizacionOffline();
 
-      const { data, error } = await supabaseClient
-        .from('recipes')
-        .select('*')
-        .order('created_at', { ascending: false });
+        // Control de tiempo límite (timeout) para evitar que la PWA se quede congelada al iniciar
+        const fetchPromise = supabaseClient
+          .from('recipes')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error al cargar recetas:', error);
-        recetas = obtenerRecetasLocales();
-      } else {
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout PWA')), 4000)
+        );
+
+        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (error) throw error;
+
         recetas = data || [];
         guardarRecetasLocales(recetas);
+      } catch (err) {
+        console.warn('Protección PWA activada, cargando caché local:', err.message);
+        recetas = obtenerRecetasLocales();
       }
+      
       renderRecetas();
     }
 
@@ -392,7 +403,7 @@
       const esFavoritaPrevio = idEditando ? (recetas.find(r => r.id === idEditando)?.favorita || false) : false;
 
       const recetaDatos = {
-        id: idEditando || 'temp_' + Date.now(),
+        id: idEditando || 'temp_' + crypto.randomUUID(),
         nombre: document.getElementById('rec-nombre').value,
         molde: document.getElementById('rec-molde').value.trim() || '-',
         tiempo: document.getElementById('rec-tiempo').value ? parseInt(document.getElementById('rec-tiempo').value) : null,
@@ -824,7 +835,7 @@
                 if (navigator.onLine) {
                   await supabaseClient.from('recipes').insert([recetaObj]);
                 } else {
-                  agregarAColaOffline('CREAR', { ...recetaObj, id: 'temp_' + Date.now() });
+                  agregarAColaOffline('CREAR', { ...recetaObj, id: 'temp_' + crypto.randomUUID() });
                 }
               }
             }
