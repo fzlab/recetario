@@ -1,26 +1,25 @@
 const CACHE_NAME = 'recetario-cache-v1.1';
+
+// Archivos locales esenciales del núcleo que se precargan al instalar
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png',
-  'https://cdn.tailwindcss.com',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+  './icon-512.png'
 ];
 
-// Instalar Service Worker y guardar en caché assets estáticos
+// Instalar Service Worker y guardar en caché los assets estáticos locales
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[SW] Guardando recursos en caché...');
+      console.log('[SW] Guardando recursos estáticos en caché...');
       return cache.addAll(ASSETS_TO_CACHE);
     }).then(() => self.skipWaiting())
   );
 });
 
-// Activar SW y limpiar cachés antiguas
+// Activar SW y limpiar cachés antiguas obsoletas
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -36,16 +35,21 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Estrategia de Fetch: Network First con fallback a Cache
+// Estrategia de Fetch: Network First con respaldo a caché
 self.addEventListener('fetch', (event) => {
   // Ignorar peticiones que no sean GET
   if (event.request.method !== 'GET') return;
 
+  // No interferir con las peticiones a la API de Supabase (la app maneja la BD offline mediante localStorage)
+  if (event.request.url.includes('supabase.co')) {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        // Clonar y actualizar caché si la respuesta es válida
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+        // Clonar y actualizar caché si la respuesta es válida (incluyendo recursos externos como CDNs)
+        if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
@@ -54,12 +58,12 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       })
       .catch(() => {
-        // Si no hay red, sirve desde el caché
+        // Si no hay red, sirve desde el caché local
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // Si es navegación a la página principal y no hay red
+          // Si es navegación general y no hay red, devuelve el index.html principal
           if (event.request.mode === 'navigate') {
             return caches.match('./index.html');
           }
