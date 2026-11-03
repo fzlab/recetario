@@ -36,7 +36,7 @@
       <span id="conexionStatus" class="text-[10px] text-emerald-200 font-medium">Verificando red...</span>
     </div>
 
-    <!-- Derecha: Widget de Reloj en Vivo -->
+    <!-- Derecha: Widget de Reloj en Vivo (Sin segundos) -->
     <div id="reloj-widget" class="text-right text-xs font-medium leading-tight">
       <!-- Se llena dinámicamente -->
     </div>
@@ -47,9 +47,15 @@
 
     <!-- SECCIÓN: VER RECETAS -->
     <section id="sec-recetas" class="tab-content">
-      <div class="flex justify-between items-center mb-4 gap-2">
+      <!-- Barra de búsqueda debajo del título -->
+      <div class="mb-4 space-y-2">
         <h2 class="text-xl font-bold">Mis Recetas</h2>
-        <input type="text" id="buscar" oninput="renderRecetas()" placeholder="Buscar receta..." class="p-2.5 text-base border rounded-lg w-1/2">
+        <div class="relative w-full">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </span>
+          <input type="text" id="buscar" oninput="renderRecetas()" placeholder="Buscar receta..." class="w-full p-2.5 pl-10 text-base border rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
       </div>
       <div id="lista-recetas" class="space-y-4">
         <p class="text-center text-gray-500 py-4"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Cargando recetas...</p>
@@ -123,7 +129,7 @@
 
   </main>
 
-  <!-- MODAL PANTALLA COMPLETA -->
+  <!-- MODAL PANTALLA COMPLETA (AMPLIAR) -->
   <div id="modal-pantalla-completa" class="fixed inset-0 bg-[#231202] text-white z-50 hidden flex flex-col p-6 overflow-y-auto">
     <div class="flex items-center justify-between pb-4 border-b border-amber-800/50">
       <button onclick="cerrarPantallaCompleta()" class="text-amber-100 hover:text-white text-2xl p-2 bg-amber-950/80 rounded-full w-12 h-12 flex items-center justify-center shadow">
@@ -154,16 +160,80 @@
     </div>
   </div>
 
-  <!-- Navegación Inferior Móvil -->
-  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2 text-center text-xs text-gray-600 z-10 max-w-xl mx-auto">
-    <button onclick="cambiarTab('sec-recetas')" class="p-2 flex-1 text-emerald-600 font-bold" id="btn-sec-recetas">
-      <i class="fa-solid fa-book-open text-xl block mb-1"></i> Recetas
+  <!-- MODAL VER INGREDIENTES Y PASOS -->
+  <div id="modal-ver-receta" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col relative overflow-hidden">
+      <!-- Header del Modal -->
+      <div class="flex items-center justify-between p-4 border-b">
+        <h2 id="modal-ver-titulo" class="text-xl font-bold text-gray-800"></h2>
+        <button onclick="cerrarModalVerReceta()" class="text-gray-400 hover:text-gray-600 p-2 text-xl font-bold">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <!-- Contenido Scrollable -->
+      <div class="p-5 overflow-y-auto flex-1 space-y-4">
+        <p id="modal-ver-info" class="text-sm text-gray-500"></p>
+        
+        <!-- Escalador de porciones -->
+        <div class="flex items-center justify-between bg-emerald-50 p-2.5 rounded-lg">
+          <span class="text-xs font-bold text-emerald-800">Escalar Porciones:</span>
+          <div id="modal-ver-escalas" class="flex gap-1 text-xs"></div>
+        </div>
+
+        <div>
+          <p class="font-bold text-gray-800 text-sm mb-1">Ingredientes (<span id="modal-ver-factor-label">1x</span>):</p>
+          <ul id="modal-ver-ingredientes" class="list-disc ml-5 space-y-1 text-sm text-gray-700"></ul>
+        </div>
+
+        <div>
+          <p class="font-bold text-gray-800 text-sm mb-1">Pasos de preparación:</p>
+          <p id="modal-ver-pasos" class="whitespace-pre-line bg-gray-50 p-3 rounded-lg border text-sm text-gray-700 leading-relaxed"></p>
+        </div>
+
+        <div id="modal-ver-timer-container"></div>
+      </div>
+      <!-- Footer: Botón Editar (izq) y Ampliar Receta (der) -->
+      <div class="flex items-center justify-between p-4 border-t bg-gray-50">
+        <button id="modal-ver-btn-editar" class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow hover:bg-emerald-700">
+          <i class="fa-solid fa-pen-to-square"></i> Editar
+        </button>
+        <button id="modal-ver-btn-ampliar" class="bg-gray-800 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow hover:bg-gray-900">
+          <i class="fa-solid fa-expand"></i> Ampliar Receta
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN -->
+  <div id="modal-eliminar" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center space-y-4">
+      <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-xl">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="text-lg font-bold text-gray-800">¿Eliminar receta?</h3>
+      <p class="text-sm text-gray-600">Esta acción no se puede deshacer.</p>
+      <div class="flex gap-3 pt-2">
+        <button onclick="cerrarModalEliminar()" class="flex-1 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg text-sm hover:bg-gray-300">Cancelar</button>
+        <button id="btn-confirmar-eliminar" class="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-lg text-sm hover:bg-red-700 shadow">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navegación Inferior Móvil (Actualizada con botón flotante y texto "Nueva" debajo) -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around items-end pt-1 pb-2 text-center text-xs text-gray-600 z-10 max-w-xl mx-auto">
+    <button onclick="cambiarTab('sec-recetas')" class="p-1 flex-1 text-emerald-600 font-bold flex flex-col items-center" id="btn-sec-recetas">
+      <i class="fa-solid fa-book-open text-xl mb-1"></i>
+      <span>Recetas</span>
     </button>
-    <button onclick="cambiarTab('sec-agregar')" class="p-2 flex-1" id="btn-sec-agregar">
-      <i class="fa-solid fa-circle-plus text-xl block mb-1"></i> Nueva
-    </button>
-    <button onclick="cambiarTab('sec-guardar')" class="p-2 flex-1" id="btn-sec-guardar">
-      <i class="fa-solid fa-floppy-disk text-xl block mb-1"></i> Respaldo
+    <div onclick="cambiarTab('sec-agregar')" class="flex-1 flex flex-col items-center relative cursor-pointer group" id="btn-sec-agregar">
+      <div class="absolute -top-5 bg-emerald-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-xl group-hover:bg-emerald-700 transition-transform active:scale-95 ">
+        <i class="fa-solid fa-plus text-lg"></i>
+      </div>
+      <span class="mt-9 pt-0 block">Nueva</span>
+    </div>
+    <button onclick="cambiarTab('sec-guardar')" class="p-1 flex-1 flex flex-col items-center" id="btn-sec-guardar">
+      <i class="fa-solid fa-floppy-disk text-xl mb-1"></i>
+      <span>Respaldo</span>
     </button>
   </nav>
 
@@ -186,6 +256,7 @@
     let idEditando = null;
     let escalasRecetas = {}; 
     let temporizadores = {}; 
+    let recetaAEliminarId = null;
 
     // --- GESTIÓN DE COLA OFFLINE Y LOCALSTORAGE ---
     function obtenerRecetasLocales() {
@@ -267,7 +338,7 @@
       actualizarEstadoConexionUI();
     });
 
-    // --- RELOJ EN VIVO ---
+    // --- RELOJ EN VIVO (Sin segundos) ---
     function actualizarReloj() {
       const ahora = new Date();
       const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -278,11 +349,10 @@
 
       let horas = ahora.getHours();
       const minutos = String(ahora.getMinutes()).padStart(2, '0');
-      const segundos = String(ahora.getSeconds()).padStart(2, '0');
       const ampm = horas >= 12 ? 'p.m.' : 'a.m.';
       horas = horas % 12;
       horas = horas ? horas : 12;
-      const horaFormateada = `${String(horas).padStart(2, '0')}:${minutos}:${segundos} ${ampm}`;
+      const horaFormateada = `${String(horas).padStart(2, '0')}:${minutos} ${ampm}`;
 
       const widget = document.getElementById('reloj-widget');
       if (widget) {
@@ -305,7 +375,6 @@
       try {
         await procesarSincronizacionOffline();
 
-        // Control de tiempo límite (timeout) para evitar que la PWA se quede congelada al iniciar
         const fetchPromise = supabaseClient
           .from('recipes')
           .select('*')
@@ -342,10 +411,14 @@
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
       document.getElementById(tabId).classList.remove('hidden');
       
-      document.querySelectorAll('nav button').forEach(btn => {
-        btn.classList.remove('text-emerald-600', 'font-bold');
-      });
-      document.getElementById('btn-' + tabId).classList.add('text-emerald-600', 'font-bold');
+      document.getElementById('btn-sec-recetas').classList.remove('text-emerald-600', 'font-bold');
+      document.getElementById('btn-sec-agregar').classList.remove('text-emerald-600', 'font-bold');
+      document.getElementById('btn-sec-guardar').classList.remove('text-emerald-600', 'font-bold');
+      
+      const activeEl = document.getElementById('btn-' + tabId);
+      if (activeEl) {
+        activeEl.classList.add('text-emerald-600', 'font-bold');
+      }
 
       if(tabId === 'sec-recetas') cargarRecetas();
       if(tabId === 'sec-agregar' && !idEditando && document.getElementById('contenedor-ingredientes-receta').children.length === 0) {
@@ -393,7 +466,6 @@
 
       const esFavoritaPrevio = idEditando ? (recetas.find(r => r.id === idEditando)?.favorita || false) : false;
 
-      // Generamos un UUID válido siempre (para online u offline)
       const recetaDatos = {
         id: idEditando || crypto.randomUUID(),
         nombre: document.getElementById('rec-nombre').value,
@@ -431,7 +503,6 @@
           return;
         }
       } else {
-        // Al insertar enviamos recetaDatos completo incluyendo su id de tipo UUID
         const { error } = await supabaseClient
           .from('recipes')
           .insert([recetaDatos]);
@@ -539,6 +610,80 @@
       document.body.style.overflow = 'auto';
     }
 
+    // --- MODAL VER INGREDIENTES Y PASOS ---
+    function abrirModalVerReceta(id) {
+      const r = recetas.find(rec => rec.id === id);
+      if (!r) return;
+
+      const factor = escalasRecetas[id] !== undefined ? escalasRecetas[id] : 1;
+      const tiempoMin = parseInt(r.tiempo) || 0;
+      const moldeTexto = (r.molde && r.molde.trim() !== '' && r.molde !== '-') ? r.molde : 'No especificado';
+      const tiempoTexto = r.tiempo ? `${r.tiempo} min` : 'No especificado';
+
+      document.getElementById('modal-ver-titulo').innerText = r.nombre;
+      document.getElementById('modal-ver-info').innerText = `Molde: ${moldeTexto}  •  Tiempo: ${tiempoTexto}`;
+      document.getElementById('modal-ver-factor-label').innerText = `${factor}x`;
+
+      const escalasCont = document.getElementById('modal-ver-escalas');
+      escalasCont.innerHTML = [0.5, 1, 2, 3].map(f => {
+        const esActivo = Math.abs(Number(factor) - Number(f)) < 0.001;
+        return `
+          <button onclick="cambiarEscalaModal('${r.id}', ${f})" class="px-2.5 py-1 rounded font-bold ${esActivo ? 'bg-emerald-600 text-white' : 'bg-white text-gray-700 border'}">
+            ${f === 0.5 ? '½x' : f + 'x'}
+          </button>
+        `;
+      }).join('');
+
+      const listaIng = document.getElementById('modal-ver-ingredientes');
+      listaIng.innerHTML = (r.ingredientes || []).map(i => {
+        const cantCalculada = (i.cantidad * factor).toFixed(2).replace(/\.00$/, '');
+        return `<li>${i.nombre} ${cantCalculada}${i.unidad}</li>`;
+      }).join('');
+
+      document.getElementById('modal-ver-pasos').innerText = r.pasos || 'Sin instrucciones agregadas.';
+
+      const timerContainer = document.getElementById('modal-ver-timer-container');
+      if (tiempoMin > 0) {
+        timerContainer.innerHTML = `
+          <div class="mt-4 bg-gray-50 border p-3 rounded-lg flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-stopwatch text-emerald-600 text-lg"></i>
+              <span id="modal-timer-display-${r.id}" class="font-mono font-bold text-base">${String(tiempoMin).padStart(2, '0')}:00</span>
+            </div>
+            <div class="flex gap-1">
+              <button onclick="iniciarTemporizadorModal('${r.id}',${tiempoMin})" class="bg-emerald-600 text-white text-xs px-2.5 py-1 rounded font-bold">Iniciar</button>
+              <button onclick="pausarTemporizador('${r.id}')" class="bg-amber-500 text-white text-xs px-2.5 py-1 rounded font-bold">Pausa</button>
+              <button onclick="resetTemporizadorModal('${r.id}',${tiempoMin})" class="bg-gray-300 text-gray-700 text-xs px-2.5 py-1 rounded font-bold">Reset</button>
+            </div>
+          </div>
+        `;
+      } else {
+        timerContainer.innerHTML = '';
+      }
+
+      document.getElementById('modal-ver-btn-editar').onclick = () => {
+        cerrarModalVerReceta();
+        editarReceta(r.id);
+      };
+      document.getElementById('modal-ver-btn-ampliar').onclick = () => {
+        cerrarModalVerReceta();
+        abrirPantallaCompleta(r.id);
+      };
+
+      document.getElementById('modal-ver-receta').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarModalVerReceta() {
+      document.getElementById('modal-ver-receta').classList.add('hidden');
+      document.body.style.overflow = 'auto';
+    }
+
+    function cambiarEscalaModal(id, factor) {
+      escalasRecetas[id] = factor;
+      abrirModalVerReceta(id);
+    }
+
     // --- MULTIPLICADOR / ESCALADOR DINÁMICO ---
     function cambiarEscala(id, factor) {
       escalasRecetas[id] = factor;
@@ -569,7 +714,7 @@
 
     // --- TEMPORIZADOR DE COCINA ---
     function iniciarTemporizador(id, minutosIniciales) {
-      const display = document.getElementById(`timer-display-${id}`);
+      const display = document.getElementById(`timer-display-${id}`) || document.getElementById(`modal-timer-display-${id}`);
       let segundos = (temporizadores[id]?.restante !== undefined) ? temporizadores[id].restante : (minutosIniciales * 60);
 
       if (temporizadores[id]?.interval) clearInterval(temporizadores[id].interval);
@@ -579,7 +724,7 @@
         interval: setInterval(() => {
           if (segundos <= 0) {
             clearInterval(temporizadores[id].interval);
-            display.innerText = "¡Listo!";
+            if (display) display.innerText = "¡Listo!";
             alert("⏰ ¡El tiempo de la receta ha terminado!");
             return;
           }
@@ -587,9 +732,14 @@
           temporizadores[id].restante = segundos;
           const min = String(Math.floor(segundos / 60)).padStart(2, '0');
           const sec = String(segundos % 60).padStart(2, '0');
-          display.innerText = `${min}:${sec}`;
+          const disp = document.getElementById(`timer-display-${id}`) || document.getElementById(`modal-timer-display-${id}`);
+          if (disp) disp.innerText = `${min}:${sec}`;
         }, 1000)
       };
+    }
+
+    function iniciarTemporizadorModal(id, minutosIniciales) {
+      iniciarTemporizador(id, minutosIniciales);
     }
 
     function pausarTemporizador(id) {
@@ -602,11 +752,15 @@
     function resetTemporizador(id, minutosIniciales) {
       pausarTemporizador(id);
       temporizadores[id] = { restante: minutosIniciales * 60 };
-      const display = document.getElementById(`timer-display-${id}`);
+      const display = document.getElementById(`timer-display-${id}`) || document.getElementById(`modal-timer-display-${id}`);
       if (display) {
         const min = String(minutosIniciales).padStart(2, '0');
         display.innerText = `${min}:00`;
       }
+    }
+
+    function resetTemporizadorModal(id, minutosIniciales) {
+      resetTemporizador(id, minutosIniciales);
     }
 
     // --- COPIAR / COMPARTIR RECETA ---
@@ -635,6 +789,54 @@
       }
     }
 
+    // --- MENÚ CONTEXTUAL Y ELIMINACIÓN ---
+    function toggleMenuContextual(id, event) {
+      event.stopPropagation();
+      document.querySelectorAll('[id^="menu-ctx-"]').forEach(el => {
+        if (el.id !== `menu-ctx-${id}`) el.classList.add('hidden');
+      });
+      const menu = document.getElementById(`menu-ctx-${id}`);
+      if (menu) menu.classList.toggle('hidden');
+    }
+
+    window.addEventListener('click', () => {
+      document.querySelectorAll('[id^="menu-ctx-"]').forEach(el => el.classList.add('hidden'));
+    });
+
+    function confirmarEliminarReceta(id) {
+      recetaAEliminarId = id;
+      document.getElementById('modal-eliminar').classList.remove('hidden');
+    }
+
+    function cerrarModalEliminar() {
+      recetaAEliminarId = null;
+      document.getElementById('modal-eliminar').classList.add('hidden');
+    }
+
+    document.getElementById('btn-confirmar-eliminar').addEventListener('click', async () => {
+      if (!recetaAEliminarId) return;
+      const id = recetaAEliminarId;
+      cerrarModalEliminar();
+
+      recetas = recetas.filter(r => r.id !== id);
+      guardarRecetasLocales(recetas);
+      renderRecetas();
+
+      if (!navigator.onLine) {
+        agregarAColaOffline('ELIMINAR', { id });
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from('recipes')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        alert('Error al eliminar la receta.');
+      }
+    });
+
     // --- RENDERIZAR RECETAS ---
     function renderRecetas() {
       const filtro = document.getElementById('buscar').value.toLowerCase();
@@ -649,12 +851,10 @@
       }
 
       contenedor.innerHTML = filtradas.map(r => {
-        const factor = escalasRecetas[r.id] !== undefined ? escalasRecetas[r.id] : 1;
-        const tiempoMin = parseInt(r.tiempo) || 0;
         const moldeTexto = (r.molde && r.molde.trim() !== '') ? r.molde : '-';
 
         return `
-        <div class="bg-white rounded-xl shadow p-4 space-y-3 ${r.favorita ? 'border-2 border-red-300' : ''}">
+        <div class="bg-white rounded-xl shadow-md p-4 space-y-3 relative ${r.favorita ? 'border-2 border-red-300' : ''}">
           <div class="flex justify-between items-start">
             <div>
               <h3 class="font-bold text-gray-800 text-xl">${r.nombre}</h3>
@@ -663,93 +863,41 @@
                 <i class="fa-solid fa-cookie-bite mr-1"></i>Molde: ${moldeTexto}
               </p>
             </div>
-            <div class="flex gap-2 items-center">
-              <button onclick="abrirPantallaCompleta('${r.id}')" class="text-gray-400 hover:text-emerald-600 text-base p-1" title="Pantalla Completa">
-                <i class="fa-solid fa-expand"></i>
-              </button>
-              <button onclick="compartirReceta('${r.id}')" class="text-gray-400 hover:text-blue-600 text-base p-1" title="Copiar/Compartir">
-                <i class="fa-solid fa-share-nodes"></i>
-              </button>
+            <div class="flex gap-2 items-center relative">
               <button onclick="toggleFavorito('${r.id}')" class="text-base p-1" title="Favorito">
                 <i class="fa-solid fa-paw ${r.favorita ? 'text-red-500' : 'text-gray-300 hover:text-red-400'}"></i>
               </button>
               <button onclick="editarReceta('${r.id}')" class="text-emerald-600 hover:text-emerald-800 text-base p-1" title="Editar">
                 <i class="fa-solid fa-pen-to-square"></i>
               </button>
-              <button onclick="eliminarReceta('${r.id}')" class="text-red-400 hover:text-red-600 text-base p-1" title="Eliminar">
-                <i class="fa-solid fa-trash-can"></i>
-              </button>
+              <!-- Botón de Menú Contextual "Más" -->
+              <div class="relative">
+                <button onclick="toggleMenuContextual('${r.id}', event)" class="text-gray-400 hover:text-gray-600 text-base p-1.5" title="Más opciones">
+                  <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                <div id="menu-ctx-${r.id}" class="hidden absolute right-0 mt-1 w-36 bg-white border rounded-lg shadow-lg z-20 py-1 text-sm">
+                  <button onclick="abrirPantallaCompleta('${r.id}')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-gray-700">
+                    <i class="fa-solid fa-expand text-gray-400"></i> Ampliar
+                  </button>
+                  <button onclick="compartirReceta('${r.id}')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-gray-700">
+                    <i class="fa-solid fa-share-nodes text-gray-400"></i> Compartir
+                  </button>
+                  <button onclick="confirmarEliminarReceta('${r.id}')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-red-600">
+                    <i class="fa-solid fa-trash-can text-red-400"></i> Eliminar
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          <details class="text-sm text-gray-700 border-t pt-3 mt-2">
-            <summary class="cursor-pointer font-bold text-emerald-700 text-base">Ver Ingredientes y Pasos</summary>
-            
-            <div class="flex items-center justify-between mt-3 bg-emerald-50 p-2 rounded-lg">
-              <span class="text-xs font-bold text-emerald-800">Escalar Porciones:</span>
-              <div class="flex gap-1 text-xs">
-                ${[0.5, 1, 2, 3].map(f => {
-                  const esActivo = Math.abs(Number(factor) - Number(f)) < 0.001;
-                  return `
-                    <button onclick="cambiarEscala('${r.id}', ${f})" data-factor="${f}" class="btn-escala-${r.id} px-2.5 py-1 rounded font-bold${esActivo ? 'bg-emerald-600 text-white' : 'bg-white text-gray-700 border'}">
-                      ${f === 0.5 ? '½x' : f + 'x'}
-                    </button>
-                  `;
-                }).join('')}
-              </div>
-            </div>
-
-            <p class="font-bold text-gray-800 text-sm mt-3">Ingredientes (<span id="factor-label-${r.id}">${factor}x</span>):</p>
-            <ul id="lista-ingredientes-${r.id}" class="list-disc ml-5 my-2 space-y-1 text-sm">
-              ${(r.ingredientes || []).map(i => {
-                const cantCalculada = (i.cantidad * factor).toFixed(2).replace(/\.00$/, '');
-                return `<li>${i.nombre} ${cantCalculada}${i.unidad}</li>`;
-              }).join('')}
-            </ul>
-
-            <p class="font-bold text-gray-800 text-sm mt-3">Pasos de preparación:</p>
-            <p class="whitespace-pre-line bg-gray-50 p-3 rounded-lg border mt-1 text-sm leading-relaxed">${r.pasos || 'Sin instrucciones agregadas.'}</p>
-
-            ${tiempoMin > 0 ? `
-              <div class="mt-4 bg-gray-50 border p-3 rounded-lg flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <i class="fa-solid fa-stopwatch text-emerald-600 text-lg"></i>
-                  <span id="timer-display-${r.id}" class="font-mono font-bold text-base">${String(tiempoMin).padStart(2, '0')}:00</span>
-                </div>
-                <div class="flex gap-1">
-                  <button onclick="iniciarTemporizador('${r.id}',${tiempoMin})" class="bg-emerald-600 text-white text-xs px-2.5 py-1 rounded font-bold">Iniciar</button>
-                  <button onclick="pausarTemporizador('${r.id}')" class="bg-amber-500 text-white text-xs px-2.5 py-1 rounded font-bold">Pausa</button>
-                  <button onclick="resetTemporizador('${r.id}',${tiempoMin})" class="bg-gray-300 text-gray-700 text-xs px-2.5 py-1 rounded font-bold">Reset</button>
-                </div>
-              </div>
-            ` : ''}
-          </details>
+          <!-- Botón para abrir modal "Ver Ingredientes y Pasos" -->
+          <button onclick="abrirModalVerReceta('${r.id}')" class="w-full text-left font-bold text-emerald-700 text-base border-t pt-3 mt-2 flex items-center justify-between hover:text-emerald-800">
+            <span>Ver Ingredientes y Pasos</span>
+            <i class="fa-solid fa-chevron-right text-xs"></i>
+          </button>
         </div>
       `;
       }).join('');
-    }
-
-    // --- ELIMINAR RECETA CON SOPORTE OFFLINE ---
-    async function eliminarReceta(id) {
-      if(confirm('¿Seguro que deseas eliminar esta receta?')) {
-        recetas = recetas.filter(r => r.id !== id);
-        guardarRecetasLocales(recetas);
-        renderRecetas();
-
-        if (!navigator.onLine) {
-          agregarAColaOffline('ELIMINAR', { id });
-          return;
-        }
-
-        const { error } = await supabaseClient
-          .from('recipes')
-          .delete()
-          .eq('id', id);
-
-        if (error) {
-          alert('Error al eliminar la receta.');
-        }
-      }
     }
 
     // --- RESPALDOS CSV ---
