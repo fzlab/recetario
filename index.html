@@ -21,6 +21,12 @@
 </head>
 <body class="bg-gray-100 text-gray-800 pb-24">
 
+  <!-- TOAST DE NOTIFICACIÓN FLOTANTE -->
+  <div id="toast-notificacion" class="fixed top-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2.5 rounded-xl shadow-2xl z-50 flex items-center gap-2 text-sm font-medium transition-all duration-300 opacity-0 pointer-events-none">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-mensaje">Receta guardada con éxito</span>
+  </div>
+
   <!-- Encabezado -->
   <header class="bg-emerald-600 text-white p-4 shadow-md sticky top-0 z-10 max-w-xl mx-auto flex items-center justify-between">
     <!-- Izquierda: Botón de Actualizar -->
@@ -65,39 +71,49 @@
     <!-- SECCIÓN: AGREGAR / EDITAR RECETA -->
     <section id="sec-agregar" class="tab-content hidden">
       <h2 id="titulo-form" class="text-xl font-bold mb-4">Nueva Receta</h2>
-      <form id="form-receta" onsubmit="guardarReceta(event)" class="bg-white p-5 rounded-xl shadow space-y-4">
-        <div>
-          <label class="block text-sm font-bold text-gray-700 mb-1">Nombre de la Receta</label>
-          <input type="text" id="rec-nombre" required class="w-full p-2.5 text-base border rounded-lg" placeholder="Ej. Pastel de Chocolate">
-        </div>
-        <div class="grid grid-cols-2 gap-3">
+      <form id="form-receta" onsubmit="guardarReceta(event)" class="bg-white p-5 rounded-xl shadow space-y-6">
+        
+        <!-- Grupo 1: Información General -->
+        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+          <h3 class="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">1. Información General</h3>
           <div>
-            <label class="block text-sm font-bold text-gray-700 mb-1">Molde</label>
-            <input type="text" id="rec-molde" placeholder="Ej. Redondo 24cm" class="w-full p-2.5 text-base border rounded-lg">
+            <label class="block text-sm font-bold text-gray-700 mb-1">Nombre de la Receta <span class="text-red-500">*</span></label>
+            <input type="text" id="rec-nombre" required class="w-full p-2.5 text-base border rounded-lg bg-white" placeholder="Ej. Pastel de Chocolate">
           </div>
-          <div>
-            <label class="block text-sm font-bold text-gray-700 mb-1">Tiempo (min)</label>
-            <input type="number" id="rec-tiempo" placeholder="30" class="w-full p-2.5 text-base border rounded-lg">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-bold text-gray-700 mb-1">Molde</label>
+              <input type="text" id="rec-molde" placeholder="Ej. Redondo 24cm" class="w-full p-2.5 text-base border rounded-lg bg-white">
+            </div>
+            <div>
+              <label class="block text-sm font-bold text-gray-700 mb-1">Tiempo (min)</label>
+              <input type="number" id="rec-tiempo" placeholder="30" class="w-full p-2.5 text-base border rounded-lg bg-white">
+            </div>
           </div>
         </div>
 
-        <!-- Lista Dinámica de Ingredientes Manuales -->
-        <div>
-          <label class="block text-sm font-bold text-gray-700 mb-1">Ingredientes</label>
+        <!-- Grupo 2: Ingredientes Dinámicos con Medida Personalizada -->
+        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+          <h3 class="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">2. Ingredientes <span class="text-red-500">*</span></h3>
           <div id="contenedor-ingredientes-receta" class="space-y-2 mb-2"></div>
-          <button type="button" onclick="agregarFilaIngrediente()" class="text-sm bg-emerald-100 text-emerald-800 px-3 py-2 rounded-lg font-semibold">
+          <button type="button" onclick="agregarFilaIngrediente()" class="text-sm bg-emerald-100 text-emerald-800 px-3 py-2 rounded-lg font-semibold hover:bg-emerald-200 transition-colors">
             + Agregar ingrediente
           </button>
         </div>
 
-        <div>
-          <label class="block text-sm font-bold text-gray-700 mb-1">Instrucciones / Pasos</label>
-          <textarea id="rec-pasos" rows="4" class="w-full p-2.5 text-base border rounded-lg" placeholder="1. Mezclar los ingredientes secos..."></textarea>
+        <!-- Grupo 3: Instrucciones / Pasos -->
+        <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+          <h3 class="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2">3. Preparación</h3>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1">Instrucciones / Pasos</label>
+            <textarea id="rec-pasos" rows="4" class="w-full p-2.5 text-base border rounded-lg bg-white" placeholder="1. Mezclar los ingredientes secos..."></textarea>
+          </div>
         </div>
 
-        <div class="space-y-2">
-          <button type="submit" id="btn-submit-receta" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-lg text-base shadow">Guardar Receta</button>
-          <button type="button" id="btn-cancelar-edicion" onclick="cancelarEdicion()" class="w-full bg-gray-200 text-gray-700 font-bold py-2 rounded-lg text-sm hidden">Cancelar Edición</button>
+        <!-- Botones de Acción Fijos / Sticky -->
+        <div class="sticky bottom-4 z-10 bg-white/95 backdrop-blur-md p-3 rounded-xl shadow-lg border border-gray-200 space-y-2">
+          <button type="submit" id="btn-submit-receta" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg text-base shadow transition-colors">Guardar Receta</button>
+          <button type="button" id="btn-cancelar-edicion" onclick="cancelarEdicion()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 rounded-lg text-sm hidden transition-colors">Cancelar Edición</button>
         </div>
       </form>
     </section>
@@ -129,7 +145,7 @@
 
   </main>
 
-  <!-- MODAL PANTALLA COMPLETA (AMPLIAR) -->
+  <!-- MODAL PANTALLA COMPLETA (AMPLIAR / MODO COCINA) -->
   <div id="modal-pantalla-completa" class="fixed inset-0 bg-[#231202] text-white z-50 hidden flex flex-col p-6 overflow-y-auto">
     <div class="flex items-center justify-between pb-4 border-b border-amber-800/50">
       <button onclick="cerrarPantallaCompleta()" class="text-amber-100 hover:text-white text-2xl p-2 bg-amber-950/80 rounded-full w-12 h-12 flex items-center justify-center shadow">
@@ -145,8 +161,10 @@
 
     <div class="flex-1 my-6 space-y-10 max-w-xl mx-auto w-full">
       <div>
-        <h3 class="text-amber-400 font-extrabold text-xl md:text-2xl uppercase tracking-wider mb-4 flex items-center gap-2 border-b border-amber-900/60 pb-2">
-          <i class="fa-solid fa-list-check text-amber-400"></i> Ingredientes <span id="fullscreen-factor" class="text-sm bg-amber-900/80 text-amber-200 px-3 py-1 rounded-full ml-auto font-bold"></span>
+        <h3 class="text-amber-400 font-extrabold text-xl md:text-2xl uppercase tracking-wider mb-4 flex items-center justify-between gap-2 border-b border-amber-900/60 pb-2">
+          <span class="flex items-center gap-2"><i class="fa-solid fa-list-check text-amber-400"></i> Ingredientes</span>
+          <!-- Selector de porciones interactivo integrado -->
+          <div id="fullscreen-escalas" class="flex gap-1"></div>
         </h3>
         <ul id="fullscreen-ingredientes" class="space-y-3 text-white text-xl md:text-2xl leading-relaxed font-bold pl-1"></ul>
       </div>
@@ -219,7 +237,7 @@
     </div>
   </div>
 
-  <!-- Navegación Inferior Móvil (Actualizada con botón flotante y texto "Nueva" debajo) -->
+  <!-- Navegación Inferior Móvil -->
   <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around items-end pt-1 pb-2 text-center text-xs text-gray-600 z-10 max-w-xl mx-auto">
     <button onclick="cambiarTab('sec-recetas')" class="p-1 flex-1 text-emerald-600 font-bold flex flex-col items-center" id="btn-sec-recetas">
       <i class="fa-solid fa-book-open text-xl mb-1"></i>
@@ -257,6 +275,50 @@
     let escalasRecetas = {}; 
     let temporizadores = {}; 
     let recetaAEliminarId = null;
+    let wakeLockSentinel = null;
+
+    // --- WAKE LOCK API (Evitar que la pantalla se apague) ---
+    async function activarWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLockSentinel = await navigator.wakeLock.request('screen');
+        } catch (err) {
+          console.warn('Wake Lock error:', err);
+        }
+      }
+    }
+
+    function liberarWakeLock() {
+      if (wakeLockSentinel !== null) {
+        wakeLockSentinel.release().catch(() => {});
+        wakeLockSentinel = null;
+      }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+      if (wakeLockSentinel !== null && document.visibilityState === 'visible') {
+        await activarWakeLock();
+      }
+    });
+
+    // --- TOAST DE NOTIFICACIÓN ---
+    function mostrarToast(mensaje, tipo = 'exito') {
+      const toast = document.getElementById('toast-notificacion');
+      const txt = document.getElementById('toast-mensaje');
+      const icon = document.getElementById('toast-icon');
+      if (!toast) return;
+
+      txt.innerText = mensaje;
+      icon.className = tipo === 'exito' ? 'fa-solid fa-circle-check text-emerald-400' : 'fa-solid fa-triangle-exclamation text-amber-400';
+      
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-1');
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-1');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 3000);
+    }
 
     // --- GESTIÓN DE COLA OFFLINE Y LOCALSTORAGE ---
     function obtenerRecetasLocales() {
@@ -426,26 +488,44 @@
       }
     }
 
-    // --- AGREGAR FILA DE INGREDIENTE MANUAL ---
+    // --- AGREGAR FILA DE INGREDIENTE MANUAL (CON SOPORTE DE MEDIDA PERSONALIZADA) ---
     function agregarFilaIngrediente(nombre = '', cantidad = '', unidad = 'grs') {
       const cont = document.getElementById('contenedor-ingredientes-receta');
       const div = document.createElement('div');
-      div.className = 'flex gap-2 items-center';
+      div.className = 'flex flex-wrap sm:flex-nowrap gap-2 items-center bg-white p-2.5 rounded-lg border shadow-sm';
+      
+      const standardUnits = ['grs', 'cda(s)', 'cdta(s)', 'ml', 'taza(s)', 'pza(s)'];
+      const esCustom = unidad && !standardUnits.includes(unidad);
+      const valorSelect = esCustom ? 'otra' : unidad;
+      const valorCustom = esCustom ? unidad : '';
       
       div.innerHTML = `
-        <input type="text" placeholder="Ingrediente" value="${nombre}" class="ing-nombre w-1/2 p-2 border rounded-lg text-sm" required>
-        <input type="number" step="0.01" placeholder="Cant." value="${cantidad}" class="ing-cant w-1/4 p-2 border rounded-lg text-sm" required>
-        <select class="ing-unidad w-1/4 p-2 border rounded-lg text-sm">
-          <option value="grs" ${unidad === 'grs' ? 'selected' : ''}>grs</option>
-          <option value="cda(s)" ${unidad === 'cda(s)' ? 'selected' : ''}>cda(s)</option>
-          <option value="cdta(s)" ${unidad === 'cdta(s)' ? 'selected' : ''}>cdta(s)</option>
-          <option value="ml" ${unidad === 'ml' ? 'selected' : ''}>ml</option>
-          <option value="taza(s)" ${unidad === 'taza(s)' ? 'selected' : ''}>taza(s)</option>
-          <option value="pza(s)" ${unidad === 'pza(s)' ? 'selected' : ''}>pza(s)</option>
+        <input type="text" placeholder="Ingrediente" value="${nombre}" class="ing-nombre flex-1 min-w-[120px] p-2 border rounded-lg text-sm" required>
+        <input type="number" step="0.01" placeholder="Cant." value="${cantidad}" class="ing-cant w-20 p-2 border rounded-lg text-sm" required>
+        <select class="ing-unidad w-28 p-2 border rounded-lg text-sm" onchange="toggleUnidadPersonalizada(this)">
+          <option value="grs" ${valorSelect === 'grs' ? 'selected' : ''}>grs</option>
+          <option value="cda(s)" ${valorSelect === 'cda(s)' ? 'selected' : ''}>cda(s)</option>
+          <option value="cdta(s)" ${valorSelect === 'cdta(s)' ? 'selected' : ''}>cdta(s)</option>
+          <option value="ml" ${valorSelect === 'ml' ? 'selected' : ''}>ml</option>
+          <option value="taza(s)" ${valorSelect === 'taza(s)' ? 'selected' : ''}>taza(s)</option>
+          <option value="pza(s)" ${valorSelect === 'pza(s)' ? 'selected' : ''}>pza(s)</option>
+          <option value="otra" ${valorSelect === 'otra' ? 'selected' : ''}>Otra...</option>
         </select>
-        <button type="button" onclick="this.parentElement.remove()" class="text-red-500 text-base px-2"><i class="fa-solid fa-trash"></i></button>
+        <input type="text" placeholder="Ej. pizca" value="${valorCustom}" class="ing-unidad-custom ${esCustom ? '' : 'hidden'} w-24 p-2 border rounded-lg text-sm">
+        <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 text-base px-2"><i class="fa-solid fa-trash"></i></button>
       `;
       cont.appendChild(div);
+    }
+
+    function toggleUnidadPersonalizada(selectEl) {
+      const customInput = selectEl.parentElement.querySelector('.ing-unidad-custom');
+      if (selectEl.value === 'otra') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+      } else {
+        customInput.classList.add('hidden');
+        customInput.value = '';
+      }
     }
 
     // --- GUARDAR O ACTUALIZAR RECETA CON SOPORTE OFFLINE ---
@@ -457,7 +537,12 @@
       filas.forEach(fila => {
         const nombre = fila.querySelector('.ing-nombre').value.trim();
         const cantidad = parseFloat(fila.querySelector('.ing-cant').value);
-        const unidad = fila.querySelector('.ing-unidad').value;
+        const selectVal = fila.querySelector('.ing-unidad').value;
+        let unidad = selectVal;
+        
+        if (selectVal === 'otra') {
+          unidad = fila.querySelector('.ing-unidad-custom').value.trim() || 'unidad';
+        }
 
         if(nombre && !isNaN(cantidad)) {
           listaIng.push({ nombre, cantidad, unidad });
@@ -489,6 +574,7 @@
         cancelarEdicion();
         renderRecetas();
         actualizarEstadoConexionUI();
+        mostrarToast('¡Receta guardada offline exitosamente!');
         return;
       }
 
@@ -515,6 +601,7 @@
 
       cancelarEdicion();
       cargarRecetas();
+      mostrarToast('¡Receta guardada con éxito!');
     }
 
     // --- EDITAR Y CANCELAR ---
@@ -577,8 +664,8 @@
       }
     }
 
-    // --- PANTALLA COMPLETA ---
-    function abrirPantallaCompleta(id) {
+    // --- PANTALLA COMPLETA (MODO COCINA) ---
+    async function abrirPantallaCompleta(id) {
       const r = recetas.find(rec => rec.id === id);
       if (!r) return;
 
@@ -588,7 +675,18 @@
 
       document.getElementById('fullscreen-titulo').innerText = r.nombre;
       document.getElementById('fullscreen-info').innerText = `Molde: ${moldeTexto}  •  Tiempo: ${tiempoTexto}`;
-      document.getElementById('fullscreen-factor').innerText = `Porción: ${factor}x`;
+
+      const escalasCont = document.getElementById('fullscreen-escalas');
+      if (escalasCont) {
+        escalasCont.innerHTML = [0.5, 1, 2, 3].map(f => {
+          const esActivo = Math.abs(Number(factor) - Number(f)) < 0.001;
+          return `
+            <button onclick="cambiarEscalaPantallaCompleta('${r.id}', ${f})" class="px-2 py-1 rounded font-bold text-xs ${esActivo ? 'bg-amber-600 text-white' : 'bg-amber-950 text-amber-200 border border-amber-800'}">
+              ${f === 0.5 ? '½x' : f + 'x'}
+            </button>
+          `;
+        }).join('');
+      }
 
       const listaIng = document.getElementById('fullscreen-ingredientes');
       listaIng.innerHTML = (r.ingredientes || []).map(i => {
@@ -603,11 +701,19 @@
 
       document.getElementById('modal-pantalla-completa').classList.remove('hidden');
       document.body.style.overflow = 'hidden';
+
+      await activarWakeLock();
     }
 
     function cerrarPantallaCompleta() {
       document.getElementById('modal-pantalla-completa').classList.add('hidden');
       document.body.style.overflow = 'auto';
+      liberarWakeLock();
+    }
+
+    function cambiarEscalaPantallaCompleta(id, factor) {
+      escalasRecetas[id] = factor;
+      abrirPantallaCompleta(id);
     }
 
     // --- MODAL VER INGREDIENTES Y PASOS ---
@@ -637,7 +743,7 @@
       const listaIng = document.getElementById('modal-ver-ingredientes');
       listaIng.innerHTML = (r.ingredientes || []).map(i => {
         const cantCalculada = (i.cantidad * factor).toFixed(2).replace(/\.00$/, '');
-        return `<li>${i.nombre} ${cantCalculada}${i.unidad}</li>`;
+        return `<li>${i.nombre} ${cantCalculada} ${i.unidad}</li>`;
       }).join('');
 
       document.getElementById('modal-ver-pasos').innerText = r.pasos || 'Sin instrucciones agregadas.';
@@ -707,7 +813,7 @@
       if (listaUl) {
         listaUl.innerHTML = (receta.ingredientes || []).map(i => {
           const cantCalculada = (i.cantidad * factor).toFixed(2).replace(/\.00$/, '');
-          return `<li>${i.nombre} ${cantCalculada}${i.unidad}</li>`;
+          return `<li>${i.nombre} ${cantCalculada} ${i.unidad}</li>`;
         }).join('');
       }
     }
@@ -763,10 +869,10 @@
       resetTemporizador(id, minutosIniciales);
     }
 
-    // --- COPIAR / COMPARTIR RECETA ---
-    function compartirReceta(id) {
+    // --- GENERAR TEXTO DE RECETA PARA COMPARTIR ---
+    function generarTextoReceta(id) {
       const r = recetas.find(rec => rec.id === id);
-      if (!r) return;
+      if (!r) return '';
 
       const factor = escalasRecetas[id] !== undefined ? escalasRecetas[id] : 1;
       let texto = `🍳 *${r.nombre}*\n`;
@@ -780,12 +886,48 @@
       });
 
       texto += `\n*Pasos:*\n${r.pasos || 'Sin pasos.'}`;
+      return texto;
+    }
 
-      if (navigator.share) {
-        navigator.share({ title: r.nombre, text: texto }).catch(() => {});
+    // --- COMPARTIR: COPIAR RECETA Y WHATSAPP (wa.me) ---
+    function copiarRecetaText(id) {
+      const texto = generarTextoReceta(id);
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(texto).then(() => {
+          mostrarToast('¡Receta copiada al portapapeles!');
+        }).catch(() => {
+          alert('¡Receta copiada al portapapeles!');
+        });
       } else {
-        navigator.clipboard.writeText(texto);
         alert('¡Receta copiada al portapapeles!');
+      }
+      document.querySelectorAll('[id^="menu-ctx-"]').forEach(el => el.classList.add('hidden'));
+    }
+
+    function compartirWhatsApp(id) {
+      const texto = generarTextoReceta(id);
+      const urlWhatsApp = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+      window.open(urlWhatsApp, '_blank');
+      document.querySelectorAll('[id^="menu-ctx-"]').forEach(el => el.classList.add('hidden'));
+    }
+
+    function mostrarVistaCompartir(id, event) {
+      event.stopPropagation();
+      const mainView = document.getElementById(`menu-view-main-${id}`);
+      const shareView = document.getElementById(`menu-view-share-${id}`);
+      if (mainView && shareView) {
+        mainView.classList.add('hidden');
+        shareView.classList.remove('hidden');
+      }
+    }
+
+    function mostrarMenuPrincipal(id, event) {
+      event.stopPropagation();
+      const mainView = document.getElementById(`menu-view-main-${id}`);
+      const shareView = document.getElementById(`menu-view-share-${id}`);
+      if (mainView && shareView) {
+        shareView.classList.add('hidden');
+        mainView.classList.remove('hidden');
       }
     }
 
@@ -793,10 +935,21 @@
     function toggleMenuContextual(id, event) {
       event.stopPropagation();
       document.querySelectorAll('[id^="menu-ctx-"]').forEach(el => {
-        if (el.id !== `menu-ctx-${id}`) el.classList.add('hidden');
+        if (el.id !== `menu-ctx-${id}`) {
+          el.classList.add('hidden');
+        }
       });
       const menu = document.getElementById(`menu-ctx-${id}`);
-      if (menu) menu.classList.toggle('hidden');
+      if (menu) {
+        // Al abrir, restablecer a la vista principal del menú
+        const mainView = document.getElementById(`menu-view-main-${id}`);
+        const shareView = document.getElementById(`menu-view-share-${id}`);
+        if (mainView && shareView) {
+          mainView.classList.remove('hidden');
+          shareView.classList.add('hidden');
+        }
+        menu.classList.toggle('hidden');
+      }
     }
 
     window.addEventListener('click', () => {
@@ -870,21 +1023,37 @@
               <button onclick="editarReceta('${r.id}')" class="text-emerald-600 hover:text-emerald-800 text-base p-1" title="Editar">
                 <i class="fa-solid fa-pen-to-square"></i>
               </button>
-              <!-- Botón de Menú Contextual "Más" -->
+              <!-- Botón de Menú Contextual "Más" con opciones de compartir integradas -->
               <div class="relative">
                 <button onclick="toggleMenuContextual('${r.id}', event)" class="text-gray-400 hover:text-gray-600 text-base p-1.5" title="Más opciones">
                   <i class="fa-solid fa-ellipsis-vertical"></i>
                 </button>
-                <div id="menu-ctx-${r.id}" class="hidden absolute right-0 mt-1 w-36 bg-white border rounded-lg shadow-lg z-20 py-1 text-sm">
-                  <button onclick="abrirPantallaCompleta('${r.id}')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-gray-700">
-                    <i class="fa-solid fa-expand text-gray-400"></i> Ampliar
-                  </button>
-                  <button onclick="compartirReceta('${r.id}')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-gray-700">
-                    <i class="fa-solid fa-share-nodes text-gray-400"></i> Compartir
-                  </button>
-                  <button onclick="confirmarEliminarReceta('${r.id}')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-red-600">
-                    <i class="fa-solid fa-trash-can text-red-400"></i> Eliminar
-                  </button>
+                <div id="menu-ctx-${r.id}" class="hidden absolute right-0 mt-1 w-48 bg-white border rounded-lg shadow-lg z-20 py-1 text-sm">
+                  <!-- Vista Principal del Menú -->
+                  <div id="menu-view-main-${r.id}">
+                    <button onclick="abrirPantallaCompleta('${r.id}')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-gray-700">
+                      <i class="fa-solid fa-expand text-gray-400"></i> Ampliar
+                    </button>
+                    <button onclick="mostrarVistaCompartir('${r.id}', event)" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center justify-between text-gray-700">
+                      <span class="flex items-center gap-2"><i class="fa-solid fa-share-nodes text-gray-400"></i> Compartir</span>
+                      <i class="fa-solid fa-chevron-right text-xs text-gray-400"></i>
+                    </button>
+                    <button onclick="confirmarEliminarReceta('${r.id}')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-red-600">
+                      <i class="fa-solid fa-trash-can text-red-400"></i> Eliminar
+                    </button>
+                  </div>
+                  <!-- Vista Secundaria de Compartir (Copiar / WhatsApp) -->
+                  <div id="menu-view-share-${r.id}" class="hidden">
+                    <button onclick="mostrarMenuPrincipal('${r.id}', event)" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-gray-500 border-b font-medium">
+                      <i class="fa-solid fa-arrow-left text-xs"></i> Volver
+                    </button>
+                    <button onclick="copiarRecetaText('${r.id}')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-gray-700">
+                      <i class="fa-regular fa-copy text-gray-400"></i> Copiar Receta
+                    </button>
+                    <button onclick="compartirWhatsApp('${r.id}')" class="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-emerald-700 font-medium">
+                      <i class="fa-brands fa-whatsapp text-emerald-500 text-base"></i> WhatsApp
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
