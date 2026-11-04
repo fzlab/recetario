@@ -1,4 +1,4 @@
-const CACHE_NAME = 'recetario-cache-v2.3.7';
+const CACHE_NAME = 'recetario-cache-v2.3.8';
 
 // Archivos locales esenciales del núcleo que se precargan al instalar
 const ASSETS_TO_CACHE = [
